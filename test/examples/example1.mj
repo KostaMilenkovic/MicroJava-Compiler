@@ -5,40 +5,80 @@ program myProgram
     //global constants declaration
     const int a=23,b=32,c='a';
     const double v=1, v=3, v='a';
+    const bool p = true, z = false, g = 'a';
+    
     
     //global variables declaration
-    int asdv, asdv, as;
-    sranje aa, opa;
+    int asdv[], asdv, as[];
+    Gama aa, opa;
+
+    //global constants declaration
+    const int a=23,b=32,c='a';
+    const double v=1, v=3, v='a';
 
     //class definition
 
-    class Govno {
+    class Beta {
+        //class attributes
         int a,b,c,d;
         Tabela t;
         double g,o,p;
+        //class methods
         {
-            int getVal( void ){
-                void
+            int getVal(  ){
+                return;
             }
-            double aaa( void ) {
-                void
+            double aaa( int a ) {
+                return;
             }
-            trouble bbb( void ){
-                void
+            trouble bbb( int a, double b )
+            int z[];
+            {
+                return;
             }
         }
     }
+
+    //global constants declaration
+    const int a=23,b=32,c='a';
+    const double v=1, v=3, v='a';
 
     class int extends double{
         {
-            hey aaa( void ) {
-                void
+            hey aaa( int c, Tabela t ) {
+                return;
             }
         }
     }
 
-//method declaration list
+    //method declaration list
 
     {
-        void
+        static void main (int a[],int c)
+        Tabela t;
+        int arr[];
+        {
+            return;
+        }
+
+        //method declaration
+        int main ()
+            //local variables definition
+            int x, s;
+            double a;
+            //method body
+            {
+
+                if(i<2 && z==0 ){
+                    return 0;
+                }else{
+                    if(c>3)
+                        break;
+                    else if (c>=2) return x; else continue;
+                }
+
+                for(i=0;i<5;i++){
+                    continue;
+                }
+            }
     }

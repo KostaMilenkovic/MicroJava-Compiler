@@ -29,8 +29,17 @@ parser code {:
     }
   
     public void unrecovered_syntax_error(Symbol cur_token) throws java.lang.Exception {
-        report_fatal_error("Fatal error, parsing has stopped : ", cur_token);
+        report_fatal_error("Error : parsing has to be stopped", cur_token);
     }
+
+    public void report_error(String message, Object info)
+      {
+        System.err.print(message);
+        System.err.flush();
+        if (info instanceof Symbol)
+                  System.err.println("Error : on line " + ((Symbol)info).left);
+        else System.err.println("");
+      }
 
     //======================================================================================
 :}
@@ -58,15 +67,15 @@ scan with {:
 //TEMINALS & NON-TERMINALS
 //=====================================================================================================================
 
-terminal PROG, LBRACE, RBRACE, SEMI_COMMA, LPAREN, RPAREN, COMMA, PRINT, RETURN, VOID, LSQUARE, RSQUARE, READ;
+terminal PROG, LBRACE, RBRACE, SEMI_COMMA, LPAREN, RPAREN, COMMA, PRINT, RETURN, VOID, STATIC, LSQUARE, RSQUARE, READ;
 terminal ASSIGN, ASSIGN_ADD, ASSIGN_SUB, ASSIGN_MUL, ASSIGN_DIV, ASSIGN_MOD;
 terminal Integer NUMBER;
-terminal IF, ELSE, WHILE, FOR , CONTINUE, BREAK;
+terminal IF, ELSE, FOR , CONTINUE, BREAK;
 terminal CLASS, EXTENDS, CONST;
 terminal EQ, NEQ, BGR, BGE, BLS, BLE, DOT, NEW;
 terminal ADD, SUB, MUL, DIV, MOD, INC, DEC;
 terminal OR, AND;
-terminal String IDENT, STRINGCONST;
+terminal String IDENT;
 terminal Character CHARCONST;
 terminal Boolean BOOLCONST;
 
@@ -80,132 +89,347 @@ non terminal GlobalDeclarationList;
 non terminal GlobalVarDeclarationList;
 non terminal GlobalVarList;
 non terminal GlobalVar;
-non terminal MethodDeclarationList;
 
 
-non terminal ClassDefinition;
+non terminal ClassDeclaration;
 non terminal ExtendedClass;
-non terminal ClassAttributeList;
-non terminal ClassAttribute;
-non terminal ClassVarList;
-non terminal ClassVar;
 
-non terminal ClassMethodListExt;
-non terminal ClassMethodList;
-non terminal ClassMethod;
+
+non terminal MethodListExt;
+non terminal MethodList;
+non terminal Method;
+non terminal MethodStatic;
 non terminal MethodReturnType;
-non terminal MethodArgs;
-non terminal MethodBody;
+non terminal MethodArgWrapper;
+non terminal MethodArgList;
+non terminal MethodArg;
+
+non terminal StatementList;
+non terminal Statement;
+non terminal StatementSimple;
+non terminal StatementComplex;
+
+non terminal ReturnStatement;
+
+non terminal IfStatement;
+non terminal IfCondition;
+non terminal Condition;
+non terminal ConditionTerm;
+non terminal ConditionFact;
+
+non terminal ForStatement;
+non terminal ForCondition;
+non terminal ForDesignatorStatement;
+
+non terminal DesignatorStatement;
+non terminal Designator;
+non terminal DesignatorRightList;
+non terminal DesignatorRight;
+
+non terminal ExpressionWithSign;
+non terminal Expression;
+
+non terminal AssignOp;
+non terminal AddOp;
+non terminal AddOpLeft;
+non terminal AddOpRight;
+non terminal MulOp;
+non terminal MulOpLeft;
+non terminal MulOpRight;
+non terminal RelOp;
+
+non terminal ActualParameters;
+
+non terminal Term;
+non terminal ExpressionRight;
+non terminal Factor;
 
 
-non terminal DeclarationList;
+non terminal LocalVarWrapper;
+non terminal LocalVarListExt;
+non terminal LocalVarList;
+non terminal LocalVar;
+
 non terminal ConstDeclarationList;
 
 non terminal ConstList;
 non terminal ConstDecl;
 
 
+precedence left ELSE;
 
 //LANGUAGE GRAMMAR
 //=====================================================================================================================
 
-Program ::= PROG ProgramName:pName GlobalDeclarationList LBRACE MethodDeclarationList RBRACE ;
+Program ::= PROG ProgramName GlobalDeclarationList MethodListExt ;
 
-ProgramName ::= IDENT:pName;
+ProgramName ::= IDENT;
+
+//=================
+
+Type ::= IDENT;
+
+Value ::= NUMBER:value 
+          |
+          CHARCONST:value
+          |
+          BOOLCONST:value
+          ;
 
 //==============================================================================
 
-GlobalDeclarationList ::=   GlobalDeclarationList ClassDefinition
+GlobalDeclarationList ::=   GlobalDeclarationList ClassDeclaration
                             |
-                            GlobalDeclarationList DeclarationList
+                            GlobalDeclarationList ConstDeclarationList
+                            |
+                            GlobalDeclarationList GlobalVarDeclarationList
                             |
                             /*epsilon*/
                             ;
-
-DeclarationList ::= ConstDeclarationList
-                    |
-                    GlobalVarDeclarationList;
-
 //=====
 
 ConstDeclarationList ::= CONST Type:tName ConstList SEMI_COMMA ;
 
-Type ::= IDENT:tName;
 
 ConstList ::=   ConstDecl COMMA ConstList
                 |
                 ConstDecl
                 ;
 
-ConstDecl ::= IDENT:cName ASSIGN Value:value;
-
-Value ::= NUMBER:value 
-          |
-          CHARCONST:value;
+ConstDecl ::= IDENT ASSIGN Value;
 
 //=====
 
-GlobalVarDeclarationList ::= Type:tName GlobalVarList SEMI_COMMA ;
+GlobalVarDeclarationList ::= Type GlobalVarList SEMI_COMMA ;
 
 GlobalVarList ::= GlobalVar COMMA GlobalVarList
                   |
                   GlobalVar;
 
-GlobalVar ::= IDENT:vName;
+GlobalVar ::= IDENT
+              |
+              IDENT LSQUARE RSQUARE;
 
 
 
 //==============================================================================
-ClassDefinition ::= CLASS Type:tName ExtendedClass LBRACE ClassAttributeList ClassMethodListExt RBRACE;
 
-ExtendedClass ::= EXTENDS Type:eName
+ClassDeclaration ::= CLASS Type ExtendedClass LBRACE LocalVarWrapper MethodListExt RBRACE;
+
+ExtendedClass ::= EXTENDS Type
                   |
                   /*epsilon*/
                   ;
 
-ClassAttributeList ::= ClassAttributeList ClassAttribute
-                       |
-                       /*epsilon*/
-                       ;
+//==============================================================================
 
-ClassAttribute ::=  Type:tName ClassVarList SEMI_COMMA;
-
-ClassVarList ::= ClassVar 
-                |
-                 ClassVar COMMA ClassVarList;
-
-ClassVar ::= IDENT:vName;
-
-ClassMethodListExt ::= LBRACE ClassMethodList RBRACE;
+MethodListExt ::= LBRACE MethodList RBRACE;
 
 
-ClassMethodList ::= ClassMethodList ClassMethod
+MethodList ::= MethodList Method
                     |
                     /*epsilon*/
                     ;
 
-ClassMethod ::= MethodReturnType LPAREN MethodArgs RPAREN LBRACE MethodBody RBRACE ;
+Method ::= MethodStatic MethodReturnType LPAREN MethodArgWrapper RPAREN LocalVarWrapper LBRACE StatementList RBRACE ;
 
-MethodReturnType ::= Type:retType IDENT:mName
+MethodStatic ::= STATIC
+                 |
+                 /*epsilon*/
+                 ;
+
+MethodReturnType ::= Type IDENT
                      |
-                     VOID IDENT:mName
+                     VOID IDENT
                      ;
 
-MethodArgs ::= VOID;
+MethodArgWrapper ::= MethodArgList
+                    |
+                    /*epsilon*/
+                    ;
 
-MethodBody ::= VOID;
+MethodArgList ::= MethodArg
+                  |
+                  MethodArg COMMA MethodArgList
+                  ;
+
+MethodArg ::= Type IDENT
+              |
+              Type IDENT LSQUARE RSQUARE;
 
 
+
+//=========
+
+LocalVarWrapper ::= LocalVarWrapper LocalVarListExt
+                    |
+                    /*epsilon*/
+                    ;
+
+LocalVarListExt ::= Type LocalVarList SEMI_COMMA ;
+
+LocalVarList ::= LocalVar
+                 |
+                 LocalVar COMMA LocalVarList;
+                 
+
+LocalVar ::= IDENT:vName
+             |
+             IDENT:vName LSQUARE RSQUARE;
 
 //==============================================================================
 
-MethodDeclarationList ::= VOID;
 
-    
+StatementList ::= StatementList Statement
+                 |
+                 /*epsilon*/
+                 ;
+
+Statement ::= StatementSimple
+              |
+              StatementComplex;
+
+StatementSimple ::= BREAK SEMI_COMMA
+                    |
+                    CONTINUE SEMI_COMMA
+                    |
+                    ReturnStatement SEMI_COMMA
+                    |
+                    DesignatorStatement SEMI_COMMA
+                    |
+                    READ LPAREN Designator RPAREN SEMI_COMMA
+                    |
+                    PRINT LPAREN ExpressionWithSign RPAREN SEMI_COMMA | PRINT LPAREN ExpressionWithSign COMMA NUMBER RPAREN SEMI_COMMA
+                    ;
+
+StatementComplex ::= IfStatement
+                     |
+                     ForStatement
+                     |
+                     LBRACE StatementList RBRACE
+                     ;
+
+ReturnStatement ::= RETURN ExpressionWithSign 
+                    |
+                    RETURN
+                    ;
+
+IfStatement ::= IfCondition Statement ELSE Statement 
+                |
+                IfCondition Statement;
+
+IfCondition ::= IF LPAREN Condition RPAREN;
+
+Condition ::= ConditionTerm
+              |
+              ConditionTerm OR Condition;
+
+ConditionTerm ::=   ConditionFact
+                    |
+                    ConditionFact AND ConditionTerm;
+
+ConditionFact ::= ExpressionWithSign
+                  |
+                  ExpressionWithSign RelOp ExpressionWithSign;
+
+ForStatement ::= ForCondition Statement;
+
+ForCondition ::= FOR LPAREN ForDesignatorStatement SEMI_COMMA Condition SEMI_COMMA ForDesignatorStatement RPAREN;
+
+ForDesignatorStatement ::= DesignatorStatement
+                           |
+                           /*epsilon*/
+                           ;
 
 
+DesignatorStatement ::= Designator AssignOp ExpressionWithSign 
+                        |
+                        Designator LPAREN ActualParameters RPAREN
+                        |
+                        Designator INC
+                        |
+                        Designator DEC;
 
+ActualParameters ::= ExpressionWithSign COMMA ActualParameters
+                     |
+                     ExpressionWithSign;
 
+ExpressionWithSign ::= SUB Expression
+                       |
+                       Expression;
+
+Expression ::= Term ExpressionRight
+               |
+               Term;
+
+ExpressionRight ::= AddOp Term;
+                    
+
+Term ::= Factor
+         |
+         Factor MulOp Factor;
+
+Factor ::= Designator
+           |
+           Designator LPAREN RPAREN
+           |
+           Designator LPAREN ExpressionWithSign RPAREN
+           |
+           NUMBER
+           |
+           CHARCONST
+           |
+           BOOLCONST
+           |
+           NEW Type
+           |
+           NEW Type LSQUARE ExpressionWithSign RSQUARE
+           |
+           LPAREN ExpressionWithSign RPAREN
+           ;
+
+Designator ::= DesignatorRightList;
+
+DesignatorRightList ::= DesignatorRightList DOT DesignatorRight
+                        |
+                        DesignatorRight;
+
+DesignatorRight ::= IDENT LSQUARE ExpressionWithSign RSQUARE
+                    |
+                    IDENT;
+
+AssignOp ::= ASSIGN | AddOpRight | MulOpRight;
+//
+RelOp ::= EQ | NEQ | BGE | BLE | BGR | BLS;
+//
+AddOp ::= AddOpLeft
+          |
+          AddOpRight;
+
+AddOpLeft ::= ADD
+              |
+              SUB;
+
+AddOpRight ::= ASSIGN_ADD
+               |
+               ASSIGN_SUB;
+//
+MulOp ::= MulOpLeft
+          |
+          MulOpRight
+          ;
+
+MulOpRight ::= ASSIGN_MUL
+               |
+               ASSIGN_DIV
+               |
+               ASSIGN_MOD;
+
+MulOpLeft ::=  MUL
+               |
+               DIV
+               |
+               MOD;
 
 
 

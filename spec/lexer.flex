@@ -47,6 +47,7 @@ return new_symbol(sym.EOF);
 "print" {return new_symbol(sym.PRINT);}
 "return" {return new_symbol(sym.RETURN);}
 "void" {return new_symbol(sym.VOID);}
+"static" {return new_symbol(sym.STATIC);}
 "++" {return new_symbol(sym.INC);}
 "--" {return new_symbol(sym.DEC);}
 "+" {return new_symbol(sym.ADD);}
@@ -86,7 +87,6 @@ return new_symbol(sym.EOF);
 [0-9]+ {return new_symbol(sym.NUMBER, new Integer (yytext()));}
 ([a-z]|[A-Z])[a-z|A-Z|0-9|_]* {return new_symbol (sym.IDENT, yytext());}
 "'"[\040-\176]"'" {return new_symbol (sym.CHARCONST, new Character (yytext().charAt(1)));}
-"\""[\040-\041 | \043-\176]*"\"" {return new_symbol (sym.STRINGCONST, yytext().substring(1, yytext().length() - 1));}
 
 
 
