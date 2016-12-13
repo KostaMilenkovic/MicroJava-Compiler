@@ -1,0 +1,211 @@
+package rs.ac.bg.etf.pp1;
+
+import java_cup.runtime.*;
+import org.apache.log4j.*;
+import rs.etf.pp1.symboltable.Tab;
+import rs.etf.pp1.symboltable.concepts.*;
+import rs.ac.bg.etf.pp1.impl.CompilerImpl;
+import rs.etf.pp1.mj.runtime.*;
+
+// import java.io.*;
+
+
+parser code {:
+	
+	int printCallCount = 0;
+	
+	Logger log = Logger.getLogger(getClass());
+   
+   //REDEFINE LOGGER METHODS
+    //======================================================================================
+     
+    public void report_fatal_error(String message, Object info) throws java.lang.Exception {
+      done_parsing();
+      report_error(message, info);
+    }
+  
+    public void syntax_error(Symbol cur_token) {
+        report_error("\nSyntax error : ", cur_token);
+    }
+  
+    public void unrecovered_syntax_error(Symbol cur_token) throws java.lang.Exception {
+        report_fatal_error("Fatal error, parsing has stopped : ", cur_token);
+    }
+
+    //======================================================================================
+:}
+
+
+action code {:
+	CompilerImpl impl = new CompilerImpl() ;
+	
+:}
+
+
+init with {:
+  Tab.init(); 
+  
+:}
+
+
+scan with {:
+	Symbol s = this.getScanner().next_token();
+	if (s != null && s.value != null) 
+		log.info(s.toString() + " " + s.value.toString());
+	return s;
+:}
+
+//TEMINALS & NON-TERMINALS
+//=====================================================================================================================
+
+terminal PROG, LBRACE, RBRACE, SEMI_COMMA, LPAREN, RPAREN, COMMA, PRINT, RETURN, VOID, LSQUARE, RSQUARE, READ;
+terminal ASSIGN, ASSIGN_ADD, ASSIGN_SUB, ASSIGN_MUL, ASSIGN_DIV, ASSIGN_MOD;
+terminal Integer NUMBER;
+terminal IF, ELSE, WHILE, FOR , CONTINUE, BREAK;
+terminal CLASS, EXTENDS, CONST;
+terminal EQ, NEQ, BGR, BGE, BLS, BLE, DOT, NEW;
+terminal ADD, SUB, MUL, DIV, MOD, INC, DEC;
+terminal OR, AND;
+terminal String IDENT, STRINGCONST;
+terminal Character CHARCONST;
+terminal Boolean BOOLCONST;
+
+non terminal Program;
+non terminal ProgramName;
+
+non terminal Type;
+non terminal Value;
+
+non terminal GlobalDeclarationList;
+non terminal GlobalVarDeclarationList;
+non terminal GlobalVarList;
+non terminal GlobalVar;
+non terminal MethodDeclarationList;
+
+
+non terminal ClassDefinition;
+non terminal ExtendedClass;
+non terminal ClassAttributeList;
+non terminal ClassAttribute;
+non terminal ClassVarList;
+non terminal ClassVar;
+
+non terminal ClassMethodListExt;
+non terminal ClassMethodList;
+non terminal ClassMethod;
+non terminal MethodReturnType;
+non terminal MethodArgs;
+non terminal MethodBody;
+
+
+non terminal DeclarationList;
+non terminal ConstDeclarationList;
+
+non terminal ConstList;
+non terminal ConstDecl;
+
+
+
+//LANGUAGE GRAMMAR
+//=====================================================================================================================
+
+Program ::= PROG ProgramName:pName GlobalDeclarationList LBRACE MethodDeclarationList RBRACE ;
+
+ProgramName ::= IDENT:pName;
+
+//==============================================================================
+
+GlobalDeclarationList ::=   GlobalDeclarationList ClassDefinition
+                            |
+                            GlobalDeclarationList DeclarationList
+                            |
+                            /*epsilon*/
+                            ;
+
+DeclarationList ::= ConstDeclarationList
+                    |
+                    GlobalVarDeclarationList;
+
+//=====
+
+ConstDeclarationList ::= CONST Type:tName ConstList SEMI_COMMA ;
+
+Type ::= IDENT:tName;
+
+ConstList ::=   ConstDecl COMMA ConstList
+                |
+                ConstDecl
+                ;
+
+ConstDecl ::= IDENT:cName ASSIGN Value:value;
+
+Value ::= NUMBER:value 
+          |
+          CHARCONST:value;
+
+//=====
+
+GlobalVarDeclarationList ::= Type:tName GlobalVarList SEMI_COMMA ;
+
+GlobalVarList ::= GlobalVar COMMA GlobalVarList
+                  |
+                  GlobalVar;
+
+GlobalVar ::= IDENT:vName;
+
+
+
+//==============================================================================
+ClassDefinition ::= CLASS Type:tName ExtendedClass LBRACE ClassAttributeList ClassMethodListExt RBRACE;
+
+ExtendedClass ::= EXTENDS Type:eName
+                  |
+                  /*epsilon*/
+                  ;
+
+ClassAttributeList ::= ClassAttributeList ClassAttribute
+                       |
+                       /*epsilon*/
+                       ;
+
+ClassAttribute ::=  Type:tName ClassVarList SEMI_COMMA;
+
+ClassVarList ::= ClassVar 
+                |
+                 ClassVar COMMA ClassVarList;
+
+ClassVar ::= IDENT:vName;
+
+ClassMethodListExt ::= LBRACE ClassMethodList RBRACE;
+
+
+ClassMethodList ::= ClassMethodList ClassMethod
+                    |
+                    /*epsilon*/
+                    ;
+
+ClassMethod ::= MethodReturnType LPAREN MethodArgs RPAREN LBRACE MethodBody RBRACE ;
+
+MethodReturnType ::= Type:retType IDENT:mName
+                     |
+                     VOID IDENT:mName
+                     ;
+
+MethodArgs ::= VOID;
+
+MethodBody ::= VOID;
+
+
+
+//==============================================================================
+
+MethodDeclarationList ::= VOID;
+
+    
+
+
+
+
+
+
+

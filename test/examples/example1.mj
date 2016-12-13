@@ -1,0 +1,44 @@
+program myProgram
+
+//global declaration list
+   
+    //global constants declaration
+    const int a=23,b=32,c='a';
+    const double v=1, v=3, v='a';
+    
+    //global variables declaration
+    int asdv, asdv, as;
+    sranje aa, opa;
+
+    //class definition
+
+    class Govno {
+        int a,b,c,d;
+        Tabela t;
+        double g,o,p;
+        {
+            int getVal( void ){
+                void
+            }
+            double aaa( void ) {
+                void
+            }
+            trouble bbb( void ){
+                void
+            }
+        }
+    }
+
+    class int extends double{
+        {
+            hey aaa( void ) {
+                void
+            }
+        }
+    }
+
+//method declaration list
+
+    {
+        void
+    }
