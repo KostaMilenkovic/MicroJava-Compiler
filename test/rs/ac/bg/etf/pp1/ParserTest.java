@@ -31,32 +31,34 @@ public class ParserTest {
 		Reader br = null;
 		try {
 
-			File sourceCode = null;
-			
-			sourceCode = new File("test/examples/example1.mj");
-			log.info("Compiling source file: " + sourceCode.getAbsolutePath());
-			
-			br = new BufferedReader(new FileReader(sourceCode));
-			Yylex lexer = new Yylex(br);
-			
-			
-			
-			System.out.println("==============SEMANTICKA ANALIZA================");
-			
-			Parser p = new Parser(lexer);
-	        Symbol s = p.parse();  //pocetak parsiranja
-	        
-	        System.out.println("================================================");
+                File sourceCode = null;
+
+                sourceCode = new File("test/examples/example1.mj");
+                log.info("Compiling source file: " + sourceCode.getAbsolutePath());
+
+                br = new BufferedReader(new FileReader(sourceCode));
+                Yylex lexer = new Yylex(br);
+
+
+                System.out.println("==============SEMANTICAL ANALYSIS================");
+
+                Parser p = new Parser(lexer);
+                Symbol s = p.parse();  //pocetak parsiranja
+
+
+                System.out.println("================================================");
 	        
 //	        log.info("Print calls = " + p.printCallCount);
 	        
 	        
-//	        System.out.println("==============SINTAKSNA ANALIZA=================");
-//	        System.out.println("Broj konstanti: " + impl.constCnt + "\n");
-//	        System.out.println("Broj globalnih promenljivih: " + impl.globalVarCnt + "\n");
-//	        System.out.println("Broj loknalnih promenljivih: " + impl.localVarCnt + "\n");	        	        
-//	        System.out.println("Broj globalnih nizova: " + impl.globalArrayCnt + "\n");
-//	        System.out.println("================================================");
+	        System.out.println("==============SINTATICAL ANALYSIS===============");
+	        System.out.println("Number of constants: " + impl.constCnt + "\n");
+	        System.out.println("Number of global variables: " + impl.globalVarCnt + "\n");
+	        System.out.println("Number of local variables: " + impl.localVarCnt + "\n");	        	        
+	        System.out.println("Number of global arrays: " + impl.globalArrayCnt + "\n");
+                System.out.println("Number of local arrays: " + impl.globalArrayCnt + "\n");
+                System.out.println("Classes defined: " + impl.classCnt + "\n");
+	        System.out.println("==============================================");
 	        
 //	        Tab.dump();
 //	        

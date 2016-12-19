@@ -16,7 +16,7 @@ parser code {:
 	
 	Logger log = Logger.getLogger(getClass());
    
-   //REDEFINE LOGGER METHODS
+    //REDEFINE LOGGER METHODS
     //======================================================================================
      
     public void report_fatal_error(String message, Object info) throws java.lang.Exception {
@@ -161,19 +161,19 @@ precedence left ELSE;
 //LANGUAGE GRAMMAR
 //=====================================================================================================================
 
-Program ::= PROG ProgramName GlobalDeclarationList MethodListExt ;
+Program ::= PROG ProgramName:pName GlobalDeclarationList MethodListExt {: impl.endProgram(); :};
 
-ProgramName ::= IDENT;
+ProgramName ::= IDENT:pName {: impl.startProgram(pName); :};
 
 //=================
 
-Type ::= IDENT;
+Type ::= IDENT:tName {: RESULT = impl.findType(tName, tNameleft); :};
 
-Value ::= NUMBER:value 
+Value ::= NUMBER:value {: RESULT = value; :}
           |
-          CHARCONST:value
+          CHARCONST:value {: RESULT = value; :}
           |
-          BOOLCONST:value
+          BOOLCONST:value {: RESULT = value; :}
           ;
 
 //==============================================================================
@@ -188,7 +188,7 @@ GlobalDeclarationList ::=   GlobalDeclarationList ClassDeclaration
                             ;
 //=====
 
-ConstDeclarationList ::= CONST Type:tName ConstList SEMI_COMMA ;
+ConstDeclarationList ::= CONST Type:tName {: impl.setCurrentType(tName); :} ConstList SEMI_COMMA ;
 
 
 ConstList ::=   ConstDecl COMMA ConstList
@@ -196,7 +196,7 @@ ConstList ::=   ConstDecl COMMA ConstList
                 ConstDecl
                 ;
 
-ConstDecl ::= IDENT ASSIGN Value;
+ConstDecl ::= IDENT:cName ASSIGN Value:value {: impl.defineConst(cName,value,cNameleft); :};
 
 //=====
 
@@ -206,15 +206,15 @@ GlobalVarList ::= GlobalVar COMMA GlobalVarList
                   |
                   GlobalVar;
 
-GlobalVar ::= IDENT
+GlobalVar ::= IDENT:vName {: impl.defineVar(vName,true,vNameleft); :}
               |
-              IDENT LSQUARE RSQUARE;
+              IDENT:vName LSQUARE RSQUARE {: impl.defineArray(vName, true, vNameleft); :};
 
 
 
 //==============================================================================
 
-ClassDeclaration ::= CLASS Type ExtendedClass LBRACE LocalVarWrapper MethodListExt RBRACE;
+ClassDeclaration ::= CLASS IDENT:cName {: impl.defineClass(cName,cNameleft); :}  ExtendedClass LBRACE LocalVarWrapper MethodListExt RBRACE {: impl.endClass(); :};
 
 ExtendedClass ::= EXTENDS Type
                   |
@@ -223,7 +223,10 @@ ExtendedClass ::= EXTENDS Type
 
 //==============================================================================
 
-MethodListExt ::= LBRACE MethodList RBRACE;
+MethodListExt ::= LBRACE MethodList RBRACE
+                  |
+                  /*epsilon*/
+                  ;
 
 
 MethodList ::= MethodList Method
@@ -231,16 +234,16 @@ MethodList ::= MethodList Method
                     /*epsilon*/
                     ;
 
-Method ::= MethodStatic MethodReturnType LPAREN MethodArgWrapper RPAREN LocalVarWrapper LBRACE StatementList RBRACE ;
+Method ::= MethodStatic MethodReturnType LPAREN MethodArgWrapper RPAREN LocalVarWrapper LBRACE StatementList RBRACE:l {: impl.endMethod(lleft); :} ;
 
 MethodStatic ::= STATIC
                  |
                  /*epsilon*/
                  ;
 
-MethodReturnType ::= Type IDENT
+MethodReturnType ::= Type:mType IDENT:mName {: impl.defineMethod(mType,mName,mNameleft); :}
                      |
-                     VOID IDENT
+                     VOID IDENT:mName {: impl.defineMethod(null, mName, mNameleft); :}
                      ;
 
 MethodArgWrapper ::= MethodArgList
@@ -273,9 +276,9 @@ LocalVarList ::= LocalVar
                  LocalVar COMMA LocalVarList;
                  
 
-LocalVar ::= IDENT:vName
+LocalVar ::= IDENT:vName {: impl.defineVar(vName, false, vNameleft); :}
              |
-             IDENT:vName LSQUARE RSQUARE;
+             IDENT:vName LSQUARE RSQUARE {: impl.defineArray(vName, false, vNameleft); :};
 
 //==============================================================================
 
@@ -309,9 +312,9 @@ StatementComplex ::= IfStatement
                      LBRACE StatementList RBRACE
                      ;
 
-ReturnStatement ::= RETURN ExpressionWithSign 
+ReturnStatement ::= RETURN:l ExpressionWithSign:ex  {: impl.returnMatched(ex,lleft); :}
                     |
-                    RETURN
+                    RETURN:l {: impl.returnMatched(Tab.noType,lleft); :}
                     ;
 
 IfStatement ::= IfCondition Statement ELSE Statement 
@@ -346,9 +349,9 @@ DesignatorStatement ::= Designator AssignOp ExpressionWithSign
                         |
                         Designator LPAREN ActualParameters RPAREN
                         |
-                        Designator INC
+                        Designator:dName INC:l {: impl.addIncrement(dName,lleft); :}
                         |
-                        Designator DEC;
+                        Designator:dName DEC:l {: impl.addDecrement(dName,lleft); :}; 
 
 ActualParameters ::= ExpressionWithSign COMMA ActualParameters
                      |
@@ -362,7 +365,9 @@ Expression ::= Term ExpressionRight
                |
                Term;
 
-ExpressionRight ::= AddOp Term;
+ExpressionRight ::= AddOp Term
+                    |
+                    ExpressionRight AddOp Term;
                     
 
 Term ::= Factor
@@ -396,24 +401,24 @@ DesignatorRightList ::= DesignatorRightList DOT DesignatorRight
 
 DesignatorRight ::= IDENT LSQUARE ExpressionWithSign RSQUARE
                     |
-                    IDENT;
+                    IDENT:vName {: RESULT = impl.getObj(vName); :};
 
 AssignOp ::= ASSIGN | AddOpRight | MulOpRight;
-//
+
 RelOp ::= EQ | NEQ | BGE | BLE | BGR | BLS;
-//
+
 AddOp ::= AddOpLeft
           |
           AddOpRight;
 
-AddOpLeft ::= ADD
+AddOpLeft ::= ADD {: RESULT = new Integer(Code.add); :}
               |
-              SUB;
+              SUB {: RESULT = new Integer(Code.sub); :};
 
 AddOpRight ::= ASSIGN_ADD
                |
                ASSIGN_SUB;
-//
+
 MulOp ::= MulOpLeft
           |
           MulOpRight
@@ -425,11 +430,11 @@ MulOpRight ::= ASSIGN_MUL
                |
                ASSIGN_MOD;
 
-MulOpLeft ::=  MUL
+MulOpLeft ::=  MUL {: RESULT = new Integer(Code.mul); :}
                |
-               DIV
+               DIV {: RESULT = new Integer(Code.div); :}
                |
-               MOD;
+               MOD {: RESULT = new Integer(Code.rem); :};
 
 
 
