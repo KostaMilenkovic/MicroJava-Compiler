@@ -1,6 +1,9 @@
 package rs.ac.bg.etf.pp1.impl;
 
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java_cup.runtime.*;
 import rs.etf.pp1.mj.runtime.*;
 import rs.etf.pp1.symboltable.Tab;
@@ -33,6 +36,9 @@ public class CompilerImpl {
     public static int globalArrayCnt = 0;
     public static int localArrayCnt = 0;
     public static int classCnt = 0;
+    //
+    public int globalDataPtr = 0;
+    public int localDataPtr = 0;
     
     public static final int operationCodes[] = {0,Code.add, Code.sub, Code.mul, Code.div, Code.rem};
     
@@ -44,7 +50,7 @@ public class CompilerImpl {
     }
 
     public void reportInfo(String msg, int line) {
-        System.out.println("INFO: " + msg + " on line : " + line);
+        //System.out.println("INFO: " + msg + " on line : " + line);
     }
 	
     public void reportError(String msg) {
@@ -52,8 +58,8 @@ public class CompilerImpl {
         System.err.println("ERROR: " + msg);
     }
 
-	public void reportInfo(String msg) {
-        System.out.println("INFO: " + msg);
+    public void reportInfo(String msg) {
+        //System.out.println("INFO: " + msg);
     }
         
     public void setCurrentType(Object type){
@@ -78,9 +84,8 @@ public class CompilerImpl {
     public void endProgram(){
         if(mainMethod == null){
             reportError("Main method not defined");
-        }else{
-            
         }
+        
         Code.dataSize = Tab.currentScope().getnVars();
         Tab.chainLocalSymbols(currentProgram);
         Tab.closeScope();
@@ -119,25 +124,78 @@ public class CompilerImpl {
     public void defineVar(String varName, boolean isGlobal, int line){
         if(Tab.currentScope().findSymbol(varName) != null){
             reportError("Name " + varName + " is already defined",line);
-        }else{
-            Tab.insert(Obj.Var, varName, currentType);
-            if(isGlobal)
-                globalVarCnt++;
-            else
-                localVarCnt++;
+            return;
         }
+        Obj var = Tab.insert(Obj.Var, varName, currentType);
+        
+        if(isGlobal){
+            var.setAdr(globalDataPtr);
+            globalDataPtr++;
+            globalVarCnt++;
+        }
+        else{
+            var.setAdr(localDataPtr);
+            localDataPtr++;
+            localVarCnt++;
+        }
+        
     }
     
     public void defineArray(String arrayName, boolean isGlobal, int line){
         if(Tab.currentScope().findSymbol(arrayName) != null){
             reportError("Name " + arrayName + " is already defined",line);
-        }else{
-            Tab.insert(Obj.Var, arrayName, currentType);
-            if(isGlobal)
-                globalArrayCnt++;
-            else
-                localArrayCnt++;
+            return;
         }
+        Struct arrayType = new Struct(Struct.Array,currentType);
+        Obj arrayVar = Tab.insert(Obj.Var, arrayName, arrayType);
+        
+        if(isGlobal){
+            arrayVar.setAdr(globalDataPtr);
+            globalDataPtr++;
+            globalArrayCnt++;
+        }
+        else{
+            arrayVar.setAdr(localDataPtr);
+            localDataPtr++;
+            localArrayCnt++;
+        }
+        
+    }
+    
+    public Struct createArray(Object t, Object e, int line){
+        Struct type = (Struct)t;
+        Struct expression = (Struct)e;
+        
+        if(!expression.assignableTo(Tab.intType)){
+            reportError("Array size expression must return an int value",line);
+            return Tab.noType;
+        }
+        
+        Code.put(Code.newarray);
+        
+        if (type.getKind() == Struct.Char)    
+            Code.put(0);
+        if (type.getKind() == Struct.Int)
+            Code.put(1);
+        
+        
+        Struct arrayType = new Struct(Struct.Array,type);
+        
+        return arrayType;
+        
+    }
+    
+    public String getArrayElem(String ident,Object e,int line){
+        Struct expression = (Struct)e;
+        Obj obj = getObj(ident,line);
+        Code.load(obj);
+        
+        if(!expression.assignableTo(Tab.intType)){
+            reportError("Array index expression must be of int type",line);
+            return ident + "[]";
+        }
+        
+        return ident + "[]";
     }
     
     //==========================================================================    
@@ -162,9 +220,10 @@ public class CompilerImpl {
             
             if(methodName.equals("main")){
                 mainMethod = currentMethod;
-                codeGenerator.loadMainMethod(currentMethod);
+                currentMethod.setAdr(Code.pc);
+                Code.mainPc = currentMethod.getAdr();
             }else{
-                codeGenerator.loadMethod(currentMethod);
+                currentMethod.setAdr(Code.pc);
             }
             
             Tab.openScope();
@@ -184,8 +243,11 @@ public class CompilerImpl {
 
         if(type != Tab.noType && Tab.noType.equals(currentMethod.getType())) {           
             reportError("Returning value in void method", line);
-        }else if(type != Tab.noType && !type.assignableTo(currentMethod.getType())){
+            return;
+        }
+        if(type != Tab.noType && !type.assignableTo(currentMethod.getType())){
             reportError("Wrong type of return value ", line);
+            return;
         }
                 
 
@@ -264,17 +326,23 @@ public class CompilerImpl {
     
     //==========================================================================
     public Obj getObj(String objName, int line){
-        Obj objFound = null;
+
         //arrays
-//        if (objName.contains("[]")){
-//            String elem = objName.substring(0, objName.lastIndexOf("[]"));
-//            Obj base = Tab.find(elem);
-//            return new Obj(Obj.Elem, "", base.getType().getElemType());
-//        }
-        objFound = Tab.find(objName);
+        if (objName.contains("[]")){
+            
+            String elem = objName.substring(0, objName.lastIndexOf("[]"));
+            Obj base = Tab.find(elem);
+            
+            if(base.equals(Tab.noObj))
+                return Tab.noObj;
+            
+            return new Obj(Obj.Elem, "", base.getType().getElemType());
+        }
+        Obj objFound = Tab.find(objName);
+        
         if(objFound.equals(Tab.noObj)){
             reportError("Unknown identifier " + objName,line);
-            return objFound;
+            return Tab.noObj;
         }
         return objFound;
     }
@@ -365,7 +433,7 @@ public class CompilerImpl {
     }
     
     public void loadConstInteger(Integer constInteger){
-        codeGenerator.loadConstInteger(constInteger);
+        Code.loadConst(constInteger);
     }
     
     public void loadConstChar(Character constChar){
@@ -380,6 +448,11 @@ public class CompilerImpl {
         Obj designator = (Obj)d;
         Struct expression = (Struct)e;
         Integer operation = (Integer)op;
+        
+        if(designator.getKind()==Obj.Con){
+            reportError("Expression is not assignable to constant " + designator.getName(),line);
+            return;
+        }
         
         if(!expression.assignableTo(designator.getType())){
             reportError("Expression is not assignable to designator " + designator.getName(),line);
@@ -423,6 +496,20 @@ public class CompilerImpl {
     
     public void addNegation(){
         Code.put(Code.neg);
+    }
+    
+    public void dump(){
+        if (CompilerImpl.errorFlag) {
+            reportError("BUILD FAILED");
+            return;
+        }
+        try {
+            reportInfo("BUILD SUCCESSFUL");
+            OutputStream output = new FileOutputStream("mydist/program.obj");
+            Code.write(output);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
 }  

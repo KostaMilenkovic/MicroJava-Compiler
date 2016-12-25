@@ -17,6 +17,7 @@ import rs.etf.pp1.mj.runtime.Code;
 import rs.etf.pp1.symboltable.Tab;
 
 public class ParserTest {
+        private static CompilerImpl impl;
 
 	static {
 		DOMConfigurator.configure(Log4JUtils.instance().findLoggerConfigFile());
@@ -26,7 +27,7 @@ public class ParserTest {
 	public static void main(String[] args) throws Exception {
 		
 		Logger log = Logger.getLogger(ParserTest.class);
-		CompilerImpl impl = new CompilerImpl() ;
+		impl = new CompilerImpl();
 		
 		Reader br = null;
 		try {
@@ -51,33 +52,11 @@ public class ParserTest {
 //	        log.info("Print calls = " + p.printCallCount);
 	        
 	        
-	        System.out.println("==============SINTATICAL ANALYSIS===============");
-	        System.out.println("Number of constants: " + impl.constCnt + "\n");
-	        System.out.println("Number of global variables: " + impl.globalVarCnt + "\n");
-	        System.out.println("Number of local variables: " + impl.localVarCnt + "\n");	        	        
-	        System.out.println("Number of global arrays: " + impl.globalArrayCnt + "\n");
-                System.out.println("Number of local arrays: " + impl.globalArrayCnt + "\n");
-                System.out.println("Classes defined: " + impl.classCnt + "\n");
-	        System.out.println("==============================================");
+	        //dumpCount();
 	        
-//	        Tab.dump();
-//	        
-//	        if (!impl.errorFlag) {
-//	        	File objFile = new File("test/program.obj");
-//	        	
-//	        	String filename = sourceCode.getName().substring(0, sourceCode.getName().lastIndexOf('.')) + ".obj";
-//	        	String path = sourceCode.getPath().substring(0, sourceCode.getPath().lastIndexOf('\\'));
-//	        	File objFile = new File(path + '\\' + filename);
-//	        	
-//	        	if (objFile.exists())
-//	        		objFile.delete();
-//	        	Code.write(new FileOutputStream(objFile));
-//	        	
-//	        	log.info("Parsiranje uspesno zavrseno!");
-//	        }
-//	        else {
-//	        	log.error("Parsiranje nije uspesno zavrseno!");
-//	        }
+	        //Tab.dump();
+                
+                impl.dump();
 	        
 		} 
 		finally {
@@ -85,6 +64,17 @@ public class ParserTest {
 		}
 
 	}
+        
+        private static void dumpCount(){
+            System.out.println("==============SINTATICAL ANALYSIS===============");
+            System.out.println("Number of constants: " + impl.constCnt + "\n");
+            System.out.println("Number of global variables: " + impl.globalVarCnt + "\n");
+            System.out.println("Number of local variables: " + impl.localVarCnt + "\n");	        	        
+            System.out.println("Number of global arrays: " + impl.globalArrayCnt + "\n");
+            System.out.println("Number of local arrays: " + impl.localArrayCnt + "\n");
+            System.out.println("Classes defined: " + impl.classCnt + "\n");
+            System.out.println("==============================================");
+        }
 	
 	
 }

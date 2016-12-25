@@ -20,39 +20,14 @@ public class CodeGenerator{
     private OutputStream output;
     
     public CodeGenerator(){
-        if (CompilerImpl.errorFlag) {
-            return;
-        }
-        try {
-                output = new FileOutputStream("mydist/proba.obj");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+        
     }
-    
-
     
     public void dump(){
-        Code.write(output);
+        
     }
     
-    public void loadConstInteger(Integer constInteger){
-        //insert unnamed const integer in tab and add him an address
-        Obj objConstNumber = Tab.insert(Obj.Con,"",Tab.intType);
-        objConstNumber.setAdr(constInteger.intValue());
-        //load it on expresion stack
-        Code.load(objConstNumber);
-    }
-    
-    public void loadMainMethod(Obj mainMethod){
-        mainMethod.setAdr(Code.pc);
-        Code.mainPc = mainMethod.getAdr();
-    }
-    
-    public void loadMethod(Obj method){
-        method.setAdr(Code.pc);
-    }
-    
+      
     public void enterMethod(Obj method, boolean isGlobal)
     {
         method.setAdr(Code.pc);
@@ -68,12 +43,5 @@ public class CodeGenerator{
         else
             Code.put(Tab.currentScope().getnVars());	
     }
-    
-    public void endMethod(){
-        
-    }
-    
-    public void loadVariable(Obj variable){
-        
-    }
+
 }

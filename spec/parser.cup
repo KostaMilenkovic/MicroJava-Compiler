@@ -388,9 +388,9 @@ Factor ::= Designator:obj {: impl.loadVariable(obj); RESULT = ((Obj)obj).getType
            |
            NEW Type
            |
-           NEW Type LSQUARE ExpressionWithSign RSQUARE
+           NEW Type:structType LSQUARE ExpressionWithSign:objExpr RSQUARE {: RESULT = impl.createArray(structType,objExpr,structTypeleft); :}
            |
-           LPAREN ExpressionWithSign RPAREN
+           LPAREN ExpressionWithSign:structExpr RPAREN {: RESULT = structExpr; :}
            ;
 
 Designator ::= DesignatorRightList:obj {: RESULT=obj; :};
@@ -399,7 +399,7 @@ DesignatorRightList ::= DesignatorRightList DOT DesignatorRight
                         |
                         DesignatorRight:id {: RESULT = impl.getObj((String)id,idleft); :};
 
-DesignatorRight ::= IDENT LSQUARE ExpressionWithSign RSQUARE
+DesignatorRight ::= IDENT:id LSQUARE ExpressionWithSign:ex RSQUARE {: RESULT = impl.getArrayElem(id,ex,idleft); :}
                     |
                     IDENT:id {: RESULT = id; :} ;
 
