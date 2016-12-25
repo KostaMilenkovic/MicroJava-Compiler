@@ -13,13 +13,15 @@ public class CompilerImpl {
     private static final int BOOL_TYPE = 6;
     private static final Struct boolType = new Struct(BOOL_TYPE);
     
-    private static boolean errorFlag = false;
+    public static boolean errorFlag = false;
     //scopes
     private Scope universeScope;
     private Scope currentScope;
     //
-    private Obj currentProgram;
-    private Obj currentMethod;
+    public Obj currentProgram = null;
+    public Scope programScope = null;
+    public Obj currentMethod = null;
+    public Obj mainMethod = null;
     private static boolean returnFlag;
     //
     private Struct currentType;
@@ -32,7 +34,9 @@ public class CompilerImpl {
     public static int localArrayCnt = 0;
     public static int classCnt = 0;
     
+    public static final int operationCodes[] = {0,Code.add, Code.sub, Code.mul, Code.div, Code.rem};
     
+    public CodeGenerator codeGenerator = new CodeGenerator();
     
     public void reportError(String msg, int line) {
         errorFlag = true;
@@ -68,19 +72,25 @@ public class CompilerImpl {
         Tab.openScope();
         //sets current scope
         currentScope = Tab.currentScope();
-               
+        programScope = currentScope;       
     }
     
     public void endProgram(){
-        
+        if(mainMethod == null){
+            reportError("Main method not defined");
+        }else{
+            
+        }
+        Code.dataSize = Tab.currentScope().getnVars();
+        Tab.chainLocalSymbols(currentProgram);
+        Tab.closeScope();
+
         if(errorFlag){
             reportInfo("Semantic analysis has failed");
         }else{
             reportInfo("Semantic analysis finished successfully");
         }
-        
-        Tab.chainLocalSymbols(currentProgram);
-        Tab.closeScope();
+        codeGenerator.dump();
     }
     
     //==========================================================================
@@ -88,11 +98,22 @@ public class CompilerImpl {
     public void defineConst(String constName, Object value, int line){
         if(Tab.currentScope().findSymbol(constName) != null){
             reportError("Name " + constName + " is already defined", line);
+            return;
         }
-        else{
-            Tab.insert(Obj.Con, constName, currentType);
-            constCnt++;
-        }
+        
+        //code generation
+        int adr = 0;
+        if(value instanceof Integer)
+            adr = (Integer)value;
+        else if (value instanceof Character)
+            adr = (int)(Character)value;
+        else if (value instanceof Boolean)
+            adr = 1;
+        //===============
+        
+        Tab.insert(Obj.Con, constName, currentType).setAdr(adr);
+        constCnt++;
+        
     }
     
     public void defineVar(String varName, boolean isGlobal, int line){
@@ -134,9 +155,18 @@ public class CompilerImpl {
             if(methodName.equals("main") && methodType != Tab.noType){
                 reportError("Main method return type not void ",line);
                 return;
+            }            
+            currentMethod = Tab.insert(Obj.Meth, methodName, methodType);
+            //loads method 
+            
+            
+            if(methodName.equals("main")){
+                mainMethod = currentMethod;
+                codeGenerator.loadMainMethod(currentMethod);
+            }else{
+                codeGenerator.loadMethod(currentMethod);
             }
             
-            currentMethod = Tab.insert(Obj.Meth, methodName, methodType);
             Tab.openScope();
             currentScope = Tab.currentScope();
             
@@ -144,7 +174,7 @@ public class CompilerImpl {
     }
     
     public void returnMatched(Object t, int line){
-        Struct type = (Struct)t;
+        Struct type = ((Struct)t);
         returnFlag = true;
         if(type==null)
             type=Tab.noType;
@@ -161,17 +191,37 @@ public class CompilerImpl {
 
     }
     
+    public void enterMethod(){
+        //enter global method
+        if(currentMethod != null)
+            codeGenerator.enterMethod(currentMethod, true);
+    }
+    
+    public void defineMethodArg(Object aType, String argName, int line){
+        Struct argType = (Struct)aType;
+        Tab.insert(Obj.Var, argName, argType);
+    }
+    
     public void endMethod(int line){
         if(currentMethod != null) {        
             if(currentMethod.getType() != Tab.noType && returnFlag == false){
                 reportError("Return statement is missing",line);
+                returnFlag = false;
+                currentMethod = null;
+                
             }
+
             Tab.chainLocalSymbols(currentMethod);
             Tab.closeScope();
-            returnFlag = false;
-            currentMethod = null;
+            
+            //push return instruction to expression stack
+            Code.put(Code.exit);
+            Code.put(Code.return_);
+            
         }
-        
+       
+        returnFlag = false;
+        currentMethod = null;
 
     }
     //==========================================================================
@@ -179,12 +229,13 @@ public class CompilerImpl {
     public void defineClass(String className, int line){
         if(Tab.currentScope().findSymbol(className) != null){
             reportError("Class " + className + " is already defined",line);
-        }else{
-            Tab.insert(Obj.Type, className, currentType);
-            Tab.openScope(); 
-            currentClass = new Struct(Struct.Class);
-            classCnt++;
+            return;
         }
+        currentClass = new Struct(Struct.Class);
+        Tab.insert(Obj.Type, className, currentClass);
+        Tab.openScope(); 
+        classCnt++;
+        
     }
     
     public void endClass(){
@@ -203,6 +254,7 @@ public class CompilerImpl {
         Obj obj = Tab.find(typeName);
         if(obj == Tab.noObj || obj.getKind() != Obj.Type){
             reportError("Unknown type " + typeName,line);
+            return Tab.noType;
         }
         return obj.getType();
     }
@@ -211,28 +263,166 @@ public class CompilerImpl {
 
     
     //==========================================================================
-    public Obj getObj(String objName){
-        return Tab.find(objName);
+    public Obj getObj(String objName, int line){
+        Obj objFound = null;
+        //arrays
+//        if (objName.contains("[]")){
+//            String elem = objName.substring(0, objName.lastIndexOf("[]"));
+//            Obj base = Tab.find(elem);
+//            return new Obj(Obj.Elem, "", base.getType().getElemType());
+//        }
+        objFound = Tab.find(objName);
+        if(objFound.equals(Tab.noObj)){
+            reportError("Unknown identifier " + objName,line);
+            return objFound;
+        }
+        return objFound;
     }
     
-    public void addIncrement(Object d, int line){
-        Obj designator = (Obj)d;
+    public void addIncrement(Object obj, int line){
+        Obj designator = (Obj)obj;
+        
         if(designator == Tab.noObj){
             reportError("Increment statement not valid",line);
+            return;
         }
         if(!designator.getType().equals(Tab.intType)) {
-            reportError("Variable " + designator.getName() + " must be of type int", line);
+            reportError("Identifier must be of type int", line);
+            return;
         }
+        //push increment instruction on stack
+        Code.load(designator);
+        Code.loadConst(1);
+        Code.put(Code.add);
+        Code.store(designator);
     }
      
-    public void addDecrement(Object d, int line){
-        Obj designator = (Obj)d;
+    public void addDecrement(Object obj, int line){
+        Obj designator = (Obj)obj;
         if(designator == Tab.noObj){
-            reportError("Increment statement not valid",line);
+            reportError("Decrement statement not valid",line);
+            return;
         }
         if(!designator.getType().equals(Tab.intType)) {
-            reportError("Variable " + designator.getName() + " must be of type int", line);
+            reportError("Identifier must be of type int", line);
+            return;
+        }
+        //push decrement instruction on stack
+        Code.load(designator);
+        Code.loadConst(1);
+        Code.put(Code.sub);
+        Code.store(designator);
+    }
+    
+    public void addPrint(Object obj, Object len, int line){
+        Struct designator = (Struct)obj;
+        Integer length = (Integer)len;
+        if(designator != Tab.charType && designator != Tab.intType){
+            reportError("Print paremeter must be of type int or char",line);
+            return;            
+        }
+        if(designator == Tab.intType){
+            //push print int on expression stack
+            Code.loadConst(length);
+            Code.put(Code.print);
+        }else{
+            //push print char on expression stack
+            Code.loadConst(length);
+            Code.put(Code.bprint);
+        }
+        
+    }
+    
+    public void addRead(Object obj, int line){
+        Obj designator = (Obj)obj;
+        if(designator == null){
+            reportError("TODO: null exception ",line);
+            return;
+        }
+        if(designator.getKind()!=Obj.Var){
+            reportError("Read parameter " + designator.getName() + " is not a variable",line);
+            return;
+        }
+        
+        if (designator.getType() == Tab.intType){
+                Code.put(Code.read);
+                Code.store(designator);
+        }
+        else{
+                Code.put(Code.bread);
+                Code.store(designator);
         }
     }
     
+    public Struct checkInteger(Object t, int line) {
+        Struct type = (Struct)t;
+        if (type != Tab.intType)
+        {
+                reportError("Expression return type must be of type int ", line);
+                return Tab.noType;
+        }
+        return type;
+    }
+    
+    public void loadConstInteger(Integer constInteger){
+        codeGenerator.loadConstInteger(constInteger);
+    }
+    
+    public void loadConstChar(Character constChar){
+        Code.loadConst(constChar);
+    }
+    
+    public void loadConstBool(Boolean constBool){
+        Code.loadConst(constBool?1:0);
+    }
+    
+    public void addAssign(Object d,Object op, Object e,int line){
+        Obj designator = (Obj)d;
+        Struct expression = (Struct)e;
+        Integer operation = (Integer)op;
+        
+        if(!expression.assignableTo(designator.getType())){
+            reportError("Expression is not assignable to designator " + designator.getName(),line);
+            return;
+        }
+        
+        if(operation == 0){ // assign operation
+            Code.store(designator);
+        }else{
+            Obj tempObj = new Obj(Obj.Var,"",Tab.intType);
+            Code.store(tempObj);
+            Code.load(designator);
+            Code.load(tempObj);
+            Code.put(operation);
+            Code.store(designator);
+        }
+
+        
+    }
+    
+    public void loadVariable(Object obj){
+        Obj variable = (Obj)obj;
+        //push variable on expression stack
+        Code.load(variable);
+    }
+    
+    public Struct addOperation(Object l, Object op, Object r, int line){
+        Struct left = (Struct)l;
+        Struct right = (Struct)r;
+        Integer operation = (Integer)op;
+        
+        if(left != Tab.intType || right != Tab.intType){
+            reportError("Opearators must be of type int",line);
+            return Tab.noType;
+        }
+        
+        Code.put(operation.intValue());
+        return Tab.intType;
+    }
+    
+    
+    public void addNegation(){
+        Code.put(Code.neg);
+    }
+
 }  

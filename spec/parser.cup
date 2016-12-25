@@ -12,7 +12,7 @@ import rs.etf.pp1.mj.runtime.*;
 
 parser code {:
 	
-	int printCallCount = 0;
+	
 	
 	Logger log = Logger.getLogger(getClass());
    
@@ -129,6 +129,7 @@ non terminal DesignatorRight;
 non terminal ExpressionWithSign;
 non terminal Expression;
 
+
 non terminal AssignOp;
 non terminal AddOp;
 non terminal AddOpLeft;
@@ -141,7 +142,7 @@ non terminal RelOp;
 non terminal ActualParameters;
 
 non terminal Term;
-non terminal ExpressionRight;
+non terminal FactorList;
 non terminal Factor;
 
 
@@ -163,17 +164,17 @@ precedence left ELSE;
 
 Program ::= PROG ProgramName:pName GlobalDeclarationList MethodListExt {: impl.endProgram(); :};
 
-ProgramName ::= IDENT:pName {: impl.startProgram(pName); :};
+ProgramName ::= IDENT:stringProgramName {: impl.startProgram(stringProgramName); :};
 
 //=================
 
-Type ::= IDENT:tName {: RESULT = impl.findType(tName, tNameleft); :};
+Type ::= IDENT:stringTypeName {: RESULT = impl.findType(stringTypeName, stringTypeNameleft); :};
 
-Value ::= NUMBER:value {: RESULT = value; :}
+Value ::= NUMBER:object {: RESULT = object; :}
           |
-          CHARCONST:value {: RESULT = value; :}
+          CHARCONST:object {: RESULT = object; :}
           |
-          BOOLCONST:value {: RESULT = value; :}
+          BOOLCONST:object {: RESULT = object; :}
           ;
 
 //==============================================================================
@@ -188,7 +189,7 @@ GlobalDeclarationList ::=   GlobalDeclarationList ClassDeclaration
                             ;
 //=====
 
-ConstDeclarationList ::= CONST Type:tName {: impl.setCurrentType(tName); :} ConstList SEMI_COMMA ;
+ConstDeclarationList ::= CONST Type:structType {: impl.setCurrentType(structType); :} ConstList SEMI_COMMA ;
 
 
 ConstList ::=   ConstDecl COMMA ConstList
@@ -196,25 +197,25 @@ ConstList ::=   ConstDecl COMMA ConstList
                 ConstDecl
                 ;
 
-ConstDecl ::= IDENT:cName ASSIGN Value:value {: impl.defineConst(cName,value,cNameleft); :};
+ConstDecl ::= IDENT:stringConstName ASSIGN Value:objectValue {: impl.defineConst(stringConstName,objectValue,stringConstNameleft); :};
 
 //=====
 
-GlobalVarDeclarationList ::= Type GlobalVarList SEMI_COMMA ;
+GlobalVarDeclarationList ::= Type:structType {: impl.setCurrentType(structType); :} GlobalVarList SEMI_COMMA ;
 
 GlobalVarList ::= GlobalVar COMMA GlobalVarList
                   |
                   GlobalVar;
 
-GlobalVar ::= IDENT:vName {: impl.defineVar(vName,true,vNameleft); :}
+GlobalVar ::= IDENT:stringVarName {: impl.defineVar(stringVarName,true,stringVarNameleft); :}
               |
-              IDENT:vName LSQUARE RSQUARE {: impl.defineArray(vName, true, vNameleft); :};
+              IDENT:stringVarName LSQUARE RSQUARE {: impl.defineArray(stringVarName, true, stringVarNameleft); :};
 
 
 
 //==============================================================================
 
-ClassDeclaration ::= CLASS IDENT:cName {: impl.defineClass(cName,cNameleft); :}  ExtendedClass LBRACE LocalVarWrapper MethodListExt RBRACE {: impl.endClass(); :};
+ClassDeclaration ::= CLASS IDENT:stringClassName {: impl.defineClass(stringClassName, stringClassNameleft); :}  ExtendedClass LBRACE LocalVarWrapper MethodListExt RBRACE {: impl.endClass(); :};
 
 ExtendedClass ::= EXTENDS Type
                   |
@@ -234,16 +235,16 @@ MethodList ::= MethodList Method
                     /*epsilon*/
                     ;
 
-Method ::= MethodStatic MethodReturnType LPAREN MethodArgWrapper RPAREN LocalVarWrapper LBRACE StatementList RBRACE:l {: impl.endMethod(lleft); :} ;
+Method ::= MethodStatic MethodReturnType LPAREN MethodArgWrapper RPAREN LocalVarWrapper {: impl.enterMethod(); :} LBRACE StatementList RBRACE:line {: impl.endMethod(lineleft); :} ;
 
 MethodStatic ::= STATIC
                  |
                  /*epsilon*/
                  ;
 
-MethodReturnType ::= Type:mType IDENT:mName {: impl.defineMethod(mType,mName,mNameleft); :}
+MethodReturnType ::= Type:stringTypeName IDENT:stringIdName {: impl.defineMethod(stringTypeName,stringIdName,stringIdNameleft); :}
                      |
-                     VOID IDENT:mName {: impl.defineMethod(null, mName, mNameleft); :}
+                     VOID IDENT:stringTypeName {: impl.defineMethod(null, stringTypeName, stringTypeNameleft); :}
                      ;
 
 MethodArgWrapper ::= MethodArgList
@@ -256,7 +257,7 @@ MethodArgList ::= MethodArg
                   MethodArg COMMA MethodArgList
                   ;
 
-MethodArg ::= Type IDENT
+MethodArg ::= Type:structType IDENT:stringIdName {: impl.defineMethodArg(structType, stringIdName, stringIdNameleft); :}
               |
               Type IDENT LSQUARE RSQUARE;
 
@@ -269,7 +270,7 @@ LocalVarWrapper ::= LocalVarWrapper LocalVarListExt
                     /*epsilon*/
                     ;
 
-LocalVarListExt ::= Type LocalVarList SEMI_COMMA ;
+LocalVarListExt ::= Type:tName {: impl.setCurrentType(tName); :} LocalVarList SEMI_COMMA ;
 
 LocalVarList ::= LocalVar
                  |
@@ -300,9 +301,11 @@ StatementSimple ::= BREAK SEMI_COMMA
                     |
                     DesignatorStatement SEMI_COMMA
                     |
-                    READ LPAREN Designator RPAREN SEMI_COMMA
+                    READ LPAREN Designator:d RPAREN SEMI_COMMA {: impl.addRead(d, dleft); :}
                     |
-                    PRINT LPAREN ExpressionWithSign RPAREN SEMI_COMMA | PRINT LPAREN ExpressionWithSign COMMA NUMBER RPAREN SEMI_COMMA
+                    PRINT LPAREN ExpressionWithSign:str RPAREN SEMI_COMMA {: impl.addPrint(str, 0, strleft); :}
+                    | 
+                    PRINT LPAREN ExpressionWithSign:str COMMA NUMBER:len RPAREN SEMI_COMMA {: impl.addPrint(str, len, strleft); :}
                     ;
 
 StatementComplex ::= IfStatement
@@ -312,7 +315,7 @@ StatementComplex ::= IfStatement
                      LBRACE StatementList RBRACE
                      ;
 
-ReturnStatement ::= RETURN:l ExpressionWithSign:ex  {: impl.returnMatched(ex,lleft); :}
+ReturnStatement ::= RETURN:l ExpressionWithSign:str  {: impl.returnMatched(str,lleft); :}
                     |
                     RETURN:l {: impl.returnMatched(Tab.noType,lleft); :}
                     ;
@@ -345,46 +348,43 @@ ForDesignatorStatement ::= DesignatorStatement
                            ;
 
 
-DesignatorStatement ::= Designator AssignOp ExpressionWithSign 
+DesignatorStatement ::= Designator:obj AssignOp:op ExpressionWithSign:structExprType {: impl.addAssign(obj,op,structExprType,objleft); :}
                         |
                         Designator LPAREN ActualParameters RPAREN
                         |
-                        Designator:dName INC:l {: impl.addIncrement(dName,lleft); :}
+                        Designator:obj INC:l {: impl.addIncrement(obj,lleft); :}
                         |
-                        Designator:dName DEC:l {: impl.addDecrement(dName,lleft); :}; 
+                        Designator:obj DEC:l {: impl.addDecrement(obj,lleft); :}; 
 
 ActualParameters ::= ExpressionWithSign COMMA ActualParameters
                      |
                      ExpressionWithSign;
 
-ExpressionWithSign ::= SUB Expression
+ExpressionWithSign ::= SUB Expression:str {: RESULT = impl.checkInteger(str,strleft); impl.addNegation(); :}
                        |
-                       Expression;
+                       Expression:str {: RESULT = str; :} ;
 
-Expression ::= Term ExpressionRight
+Expression ::= Term:structTerm AddOp:intOpCode Expression:structExpression {: RESULT = impl.addOperation(structTerm,intOpCode,structExpression,intOpCodeleft); :}
                |
-               Term;
+               Term:term {: RESULT = term; :};
+                  
+Term ::= FactorList:obj {: RESULT = obj; :};
 
-ExpressionRight ::= AddOp Term
-                    |
-                    ExpressionRight AddOp Term;
-                    
+FactorList ::= FactorList:structFactorListType MulOp:intOpCode Factor:structFactorType {: RESULT = impl.addOperation(structFactorListType,intOpCode,structFactorType,intOpCodeleft); :}
+                |
+               Factor:structType {: RESULT = structType; :};
 
-Term ::= Factor
-         |
-         Factor MulOp Factor;
-
-Factor ::= Designator
+Factor ::= Designator:obj {: impl.loadVariable(obj); RESULT = ((Obj)obj).getType(); :}
            |
            Designator LPAREN RPAREN
            |
            Designator LPAREN ExpressionWithSign RPAREN
            |
-           NUMBER
+           NUMBER:integerConst {: impl.loadConstInteger(integerConst); RESULT = Tab.intType; :}
            |
-           CHARCONST
+           CHARCONST:charConst {: impl.loadConstChar(charConst); RESULT = Tab.charType; :}
            |
-           BOOLCONST
+           BOOLCONST:boolConst {: impl.loadConstBool(boolConst); RESULT = new Struct(Struct.Bool); :}
            |
            NEW Type
            |
@@ -393,42 +393,50 @@ Factor ::= Designator
            LPAREN ExpressionWithSign RPAREN
            ;
 
-Designator ::= DesignatorRightList;
+Designator ::= DesignatorRightList:obj {: RESULT=obj; :};
 
 DesignatorRightList ::= DesignatorRightList DOT DesignatorRight
                         |
-                        DesignatorRight;
+                        DesignatorRight:id {: RESULT = impl.getObj((String)id,idleft); :};
 
 DesignatorRight ::= IDENT LSQUARE ExpressionWithSign RSQUARE
                     |
-                    IDENT:vName {: RESULT = impl.getObj(vName); :};
+                    IDENT:id {: RESULT = id; :} ;
 
-AssignOp ::= ASSIGN | AddOpRight | MulOpRight;
+AssignOp ::= ASSIGN {: RESULT = new Integer(0); :}  
+             | 
+             AddOpRight:intOpCode {: RESULT = intOpCode; :} 
+             |
+             MulOpRight:intOpCode {: RESULT = intOpCode; :}
+             ;
 
 RelOp ::= EQ | NEQ | BGE | BLE | BGR | BLS;
 
-AddOp ::= AddOpLeft
+AddOp ::= AddOpLeft:intOpCode {: RESULT = intOpCode; :}
           |
-          AddOpRight;
+          AddOpRight:intOpCode {: RESULT = intOpCode; :}
+          ;
 
 AddOpLeft ::= ADD {: RESULT = new Integer(Code.add); :}
               |
               SUB {: RESULT = new Integer(Code.sub); :};
 
-AddOpRight ::= ASSIGN_ADD
+AddOpRight ::= ASSIGN_ADD {: RESULT = new Integer(Code.add); :} 
                |
-               ASSIGN_SUB;
+               ASSIGN_SUB {: RESULT = new Integer(Code.sub); :} 
+               ;
 
-MulOp ::= MulOpLeft
+MulOp ::= MulOpLeft:intOpCode {: RESULT = intOpCode; :}
           |
-          MulOpRight
+          MulOpRight:intOpCode {: RESULT = intOpCode; :}
           ;
 
-MulOpRight ::= ASSIGN_MUL
+MulOpRight ::= ASSIGN_MUL {: RESULT = new Integer(Code.mul); :} 
                |
-               ASSIGN_DIV
+               ASSIGN_DIV {: RESULT = new Integer(Code.div); :} 
                |
-               ASSIGN_MOD;
+               ASSIGN_MOD {: RESULT = new Integer(Code.rem); :} 
+               ;
 
 MulOpLeft ::=  MUL {: RESULT = new Integer(Code.mul); :}
                |
