@@ -320,13 +320,13 @@ ReturnStatement ::= RETURN:l ExpressionWithSign:str  {: impl.returnMatched(str,l
                     RETURN:l {: impl.returnMatched(Tab.noType,lleft); :}
                     ;
 
-IfStatement ::= IfCondition Statement ELSE Statement 
+IfStatement ::= IfCondition Statement ELSE {: impl.endIfPart(); :} Statement {: impl.endIf(); :}
                 |
-                IfCondition Statement;
+                IfCondition Statement {: impl.endIf(); :} ;
 
 IfCondition ::= IF LPAREN Condition RPAREN;
 
-Condition ::= ConditionTerm
+Condition ::= ConditionTerm {: impl.addConditionTerm(); :}
               |
               ConditionTerm OR Condition;
 
@@ -334,9 +334,10 @@ ConditionTerm ::=   ConditionFact
                     |
                     ConditionFact AND ConditionTerm;
 
-ConditionFact ::= ExpressionWithSign
+ConditionFact ::= ExpressionWithSign:expr1 {: impl.addConditionFact(expr1,expr1left); :}
                   |
-                  ExpressionWithSign RelOp ExpressionWithSign;
+                  ExpressionWithSign:expr1 RelOp:integerOpCode ExpressionWithSign:expr2 {: impl.addConditionFact(expr1,integerOpCode, expr2, integerOpCodeleft); :}
+                  ;
 
 ForStatement ::= ForCondition Statement;
 
@@ -403,6 +404,8 @@ DesignatorRight ::= IDENT:id LSQUARE ExpressionWithSign:ex RSQUARE {: RESULT = i
                     |
                     IDENT:id {: RESULT = id; :} ;
 
+//====================================================================================================================
+
 AssignOp ::= ASSIGN {: RESULT = new Integer(0); :}  
              | 
              AddOpRight:intOpCode {: RESULT = intOpCode; :} 
@@ -410,7 +413,18 @@ AssignOp ::= ASSIGN {: RESULT = new Integer(0); :}
              MulOpRight:intOpCode {: RESULT = intOpCode; :}
              ;
 
-RelOp ::= EQ | NEQ | BGE | BLE | BGR | BLS;
+RelOp ::=   EQ {: RESULT = new Integer(Code.eq); :}
+            | 
+            NEQ {: RESULT = new Integer(Code.ne); :}
+            | 
+            BGE {: RESULT = new Integer(Code.ge); :}
+            | 
+            BLE {: RESULT = new Integer(Code.le); :}
+            | 
+            BGR {: RESULT = new Integer(Code.gt); :}
+            | 
+            BLS {: RESULT = new Integer(Code.lt); :}
+            ;
 
 AddOp ::= AddOpLeft:intOpCode {: RESULT = intOpCode; :}
           |

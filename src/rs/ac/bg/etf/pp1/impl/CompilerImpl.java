@@ -10,6 +10,9 @@ import rs.etf.pp1.symboltable.Tab;
 import rs.etf.pp1.symboltable.concepts.*;
 
 import java.lang.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
 
 public class CompilerImpl {
     //type definition
@@ -40,9 +43,35 @@ public class CompilerImpl {
     public int globalDataPtr = 0;
     public int localDataPtr = 0;
     
-    public static final int operationCodes[] = {0,Code.add, Code.sub, Code.mul, Code.div, Code.rem};
+    public static final int operationCodes[] = {0, Code.add, Code.sub, Code.mul, Code.div, Code.rem};
     
-    public CodeGenerator codeGenerator = new CodeGenerator();
+    //condition
+    private int currentConditionAddress;
+    private int conditionOperation;
+    private Stack<Integer> fixup  = new Stack<Integer>();
+    
+    //==========================================================================
+    
+    public static class IfConstruct extends ConditionReason{
+            public boolean hasElse;
+            public int fixElse;
+    }
+
+    public static class ConditionReason{
+            List<OrConditions> orCond = new ArrayList<OrConditions>();
+            public int start;
+    }
+    public static class OrConditions{
+            List<ConditionFact> andCond = new ArrayList<ConditionFact>();
+    }
+    public static class ConditionFact {
+            public int startAddress;
+            public int fixAddress;
+            public int opcode;
+    }
+    
+    //==========================================================================
+   
     
     public void reportError(String msg, int line) {
         errorFlag = true;
@@ -95,7 +124,7 @@ public class CompilerImpl {
         }else{
             reportInfo("Semantic analysis finished successfully");
         }
-        codeGenerator.dump();
+        //dump();
     }
     
     //==========================================================================
@@ -187,8 +216,13 @@ public class CompilerImpl {
     
     public String getArrayElem(String ident,Object e,int line){
         Struct expression = (Struct)e;
+        
         Obj obj = getObj(ident,line);
+        Obj tempObj = new Obj(Obj.Var,"",Tab.intType);
+        Code.store(tempObj);
+        
         Code.load(obj);
+        Code.load(tempObj);
         
         if(!expression.assignableTo(Tab.intType)){
             reportError("Array index expression must be of int type",line);
@@ -255,8 +289,22 @@ public class CompilerImpl {
     
     public void enterMethod(){
         //enter global method
-        if(currentMethod != null)
-            codeGenerator.enterMethod(currentMethod, true);
+        if(currentMethod != null){
+            boolean isGlobal = true; //temp; 
+            
+            currentMethod.setAdr(Code.pc);
+            Code.put(Code.enter);
+
+            if (isGlobal)
+                Code.put(currentMethod.getLevel());
+            else
+                Code.put(currentMethod.getLevel() + 1);
+
+            if (isGlobal)
+                Code.put(Tab.currentScope().getnVars());
+            else
+                Code.put(Tab.currentScope().getnVars());	
+        }
     }
     
     public void defineMethodArg(Object aType, String argName, int line){
@@ -359,6 +407,8 @@ public class CompilerImpl {
             return;
         }
         //push increment instruction on stack
+        if (designator.getKind() == Obj.Elem)
+            Code.put(Code.dup2);
         Code.load(designator);
         Code.loadConst(1);
         Code.put(Code.add);
@@ -376,6 +426,8 @@ public class CompilerImpl {
             return;
         }
         //push decrement instruction on stack
+        if (designator.getKind() == Obj.Elem)
+            Code.put(Code.dup2);
         Code.load(designator);
         Code.loadConst(1);
         Code.put(Code.sub);
@@ -464,10 +516,15 @@ public class CompilerImpl {
         }else{
             Obj tempObj = new Obj(Obj.Var,"",Tab.intType);
             Code.store(tempObj);
+            if (designator.getKind() == Obj.Elem)
+                Code.put(Code.dup2);
             Code.load(designator);
             Code.load(tempObj);
             Code.put(operation);
             Code.store(designator);
+            
+            
+            
         }
 
         
@@ -511,5 +568,56 @@ public class CompilerImpl {
             e.printStackTrace();
         }
     }
+    
+    
+    public void addConditionFact(Object e, int line){
+        Struct expression = (Struct)e;
+        if(expression.getKind() != Struct.Bool){
+            reportError("Expression must be of boolean type",line);
+            return;
+        }
+        
+    }
+    
+    public void addConditionTerm(){
+        Code.putJump(0);
+        fixup.push(Code.pc-2);
+        
+        while(!fixup.empty())
+            Code.fixup(fixup.pop());
+    }
+    
+    public void addConditionFact(Object el, Object op, Object er, int line){
+        Struct left = (Struct)el;
+        Struct right = (Struct)er;
+        Integer operation = (Integer)op;
+        
+        if(left != Tab.intType || right != Tab.intType){
+            reportError("Operands are not comparable",line);
+            return;
+        }
+        Code.putFalseJump(operation, 0);
+        fixup.push(Code.pc - 2);
+        
+    }
+
+    
+    public void endIf(){
+        
+        Code.fixup(fixup.pop());
+    }
+    
+    public void endIfPart(){
+        Code.pc+=3;
+        Code.fixup(fixup.pop());
+        Code.pc-=3;
+        
+        Code.putJump(0);
+        fixup.push(Code.pc - 2);
+       
+    }
+
+    
+    
 
 }  

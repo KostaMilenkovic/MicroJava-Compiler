@@ -3,70 +3,34 @@ program myProgram
     int v1;
     int v2, v3;
     char c1;
+    int globArr[];
     const int N = 5;
-    int arr[];
+
 {
     void main ()
         int l1;
         char c2;
+        int arr[];
+        int max,min;
+        int a,b;
+
         {
-            //TODO: array
-            //arr = new int[10];
-            //arr[3] = 7;
-            //print(arr[3]);
+
+            //==================
+
+            a = 5;
+            b = 24;
+            max = 0;
+            min = 100;
+
+            if(a>max && b<max || a<max){
+                print(a,10);
+                print(b,10);
+            }
 
             
-            v1 = N + 10;  // TODO: not working
-            print(N);
-            v1 = 2;
-            v3 = 3;
-            l1 = 100;
-            c1 = 'a';
-            print(N,3);
-            print(l1,5);
             
-            v1++;
-            v1++;
-            v1--;
-            v1 = 2 * 8; //16
-            v1 = v1 + 2;  //18
-            v1 = v1 / 2; //9
-            v1 = v1 + 2 + 3; //14
-            v1 = v1 + 2 + v3 - v1; // 5
-            print(-v1,3); //-5
-            v1 += 10; //15
-            print(v1,3); //15
-            v2 = 10; 
-            v2--; //9
-            v2 = v2 + v1;
-            print(v2,3); //24
-            v2 += 10;   
-            print(v2,3); //34
-            v2 -= 34;
-            print(v2,3); //0
-            v2 += 100;
-            print(v2,5);  // 100
-            v2 /= 25;
-            print(v2,3); //4
-            v2 %= 3;
-            print(v2,3); //1
-            v2 = v2 * 10 * 2;
-            print(v2,3); //20
-            print(v2/4,3); //5
-            print(v2%11,3); //9
-            v2 = v2 + 3 * 2 + 6 * 2;
-            print(v2,4); //38
-            
-            c1 = 'a';
-            print(c1,5);
-            print('k');
-            print('k');
-            print('o');
-
-            v1 = (2 + 8) * 5 + 3 + 6 * 5;
-            print(v1,3); //83
-            
-
+           
             return;
         }       
 }

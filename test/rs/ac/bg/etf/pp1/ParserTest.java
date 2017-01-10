@@ -48,13 +48,7 @@ public class ParserTest {
 
 
                 System.out.println("================================================");
-	        
-//	        log.info("Print calls = " + p.printCallCount);
-	        
-	        
-	        //dumpCount();
-	        
-	        //Tab.dump();
+
                 
                 impl.dump();
 	        
