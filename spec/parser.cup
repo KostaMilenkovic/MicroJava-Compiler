@@ -118,18 +118,17 @@ non terminal ActualParameters;
 
 non terminal ExpressionWithSign;
 non terminal Expression;
+non terminal TermList;
+non terminal FactorList;
+non terminal Factor;
 
 non terminal AssignOp;
-non terminal AddOp;
 non terminal AddOpLeft;
 non terminal AddOpRight;
-non terminal MulOp;
 non terminal MulOpLeft;
 non terminal MulOpRight;
 non terminal RelOp;
 
-non terminal FactorList;
-non terminal Factor;
 
 non terminal LocalVarWrapper;
 non terminal LocalVarListExt;
@@ -299,14 +298,18 @@ ActualParameters ::= ExpressionWithSign COMMA ActualParameters
 //EXPRESSION //returns Struct
 //==============================================================================
 
-ExpressionWithSign ::=  SUB Expression:objExpression {: RESULT = impl.checkInteger(((Obj)objExpression).getType(),objExpressionleft); impl.addNegation(); :}
+ExpressionWithSign ::=  SUB Expression:objExpression {: RESULT = ((Obj)objExpression).getType(); impl.addNegation(); impl.setFromDesignator(false); :}
                        |Expression:objExpression {: RESULT = ((Obj)objExpression).getType(); impl.setFromDesignator(false); :} ;
 
-Expression ::=  FactorList:objFactorList  AddOp:intOpCode {: impl.incrementAddOp(); :} Expression:objExpression {: RESULT = impl.addOperation(objFactorList,intOpCode,objExpression,intOpCodeleft);  :}
-               |FactorList:objFactorList {: RESULT = objFactorList; impl.checkArrayFactorList(objFactorList); :};
+Expression ::=  TermList:objTermList {: RESULT =  objTermList; impl.checkArrayFactorList(objTermList); :}
+               |TermList:objTermList AddOpRight:intOpCode {: impl.incrementAddOpRight(); :} Expression:objExpression {: RESULT = impl.addRight(objTermList,intOpCode, objExpression, intOpCodeleft); :}
+               |TermList:objTermList MulOpRight:intOpCode {: impl.incrementMulOpRight(); :} Expression:objExpression {: RESULT = impl.mulRight(objTermList, intOpCode, objExpression, intOpCodeleft); :};
 
-FactorList ::=   Factor:objFactor MulOp:intOpCode {: impl.incrementMulOp(); :}  FactorList:objFactorList {: RESULT = impl.mulOperation(objFactor,intOpCode,objFactorList,intOpCodeleft); :}
-                |Factor:objFactor {: RESULT = objFactor; impl.checkArrayFactor(objFactor); :};
+TermList ::= FactorList:objFactorList {: RESULT = objFactorList; :}
+            |TermList:objTermList {: impl.loadIfArray(objTermList); :} AddOpLeft:intOpCode {: impl.incrementAddOpLeft(); :} FactorList:objFactorList {: impl.loadIfArray(objFactorList); RESULT = impl.addLeft(objTermList, intOpCode, objFactorList, intOpCodeleft); :};
+
+FactorList ::= Factor:objFactor {: RESULT = objFactor; impl.checkArrayFactor(objFactor); :}
+              |FactorList:objFactorList {: impl.loadIfArray(objFactorList); :} MulOpLeft:intOpCode {: impl.incrementMulOpLeft(); :} Factor:objFactor {:  impl.loadIfArray(objFactorList); RESULT = impl.mulLeft(objFactorList, intOpCode, objFactor, intOpCodeleft); :};
 
 Factor ::=  Designator:obj {: RESULT = impl.loadDesignator(obj); :}
            |Designator LPAREN RPAREN {: :}
@@ -336,24 +339,16 @@ RelOp ::=    EQ {: RESULT = new Integer(Code.eq); :}
             |BLS {: RESULT = new Integer(Code.lt); :}
             ;
 
-AddOp ::=  AddOpLeft:intOpCode {: RESULT = intOpCode;  :}
-          |AddOpRight:intOpCode {: RESULT = intOpCode; :}
-          ;
-
 AddOpLeft ::=  ADD {: RESULT = new Integer(Code.add); :}
               |SUB {: RESULT = new Integer(Code.sub); :};
 
-AddOpRight ::=  ASSIGN_ADD {: RESULT = new Integer(impl.ASSIGN_OP + Code.add);  :} 
-               |ASSIGN_SUB {: RESULT = new Integer(impl.ASSIGN_OP + Code.sub); :} 
+AddOpRight ::=  ASSIGN_ADD {: RESULT = new Integer(Code.add);  :} 
+               |ASSIGN_SUB {: RESULT = new Integer(Code.sub); :} 
                ;
 
-MulOp ::=  MulOpLeft:intOpCode {: RESULT = intOpCode;  :}
-          |MulOpRight:intOpCode {: RESULT = intOpCode;  :}
-          ;
-
-MulOpRight ::=  ASSIGN_MUL {: RESULT = new Integer(impl.ASSIGN_OP + Code.mul); :} 
-               |ASSIGN_DIV {: RESULT = new Integer(impl.ASSIGN_OP + Code.div); :} 
-               |ASSIGN_MOD {: RESULT = new Integer(impl.ASSIGN_OP + Code.rem); :} 
+MulOpRight ::=  ASSIGN_MUL {: RESULT = new Integer(Code.mul); :} 
+               |ASSIGN_DIV {: RESULT = new Integer(Code.div); :} 
+               |ASSIGN_MOD {: RESULT = new Integer(Code.rem); :} 
                ;
 
 MulOpLeft ::=   MUL {: RESULT = new Integer(Code.mul); :}

@@ -1,40 +1,51 @@
-program myProgram
-    int v1;
-    int v2, v3;
-    char c1;
-    int globArr[];
-    const int N = 5;
+// Test301
+
+program test301
+	const int jedan = 1;
+	const int pet = 5;
+
+	int niz[];
+	
+	char nizch[];
+	
 {
-    void main ()
-        int l1;
-        char c2;
-        int arr[];
-        int max,min;
-        int a,b;
-        {
-            arr = new int[20];
-            arr[3] = 3;
-            arr[4] = 5;
-            arr[8] = 6;
-            arr[7] = 28;
-            arr[8]++;
-            arr[9] = 3 + arr[8] * ( 2 + 1 + 2 ); //38
-            arr[8] += arr[7] /= arr[8] *= arr[4] %= arr[3];
-
-            print(arr[3],3);
-            print(arr[4],3);
-            print(arr[7],3);
-            print(arr[8],3);
-            print(arr[9],3);
-
-            max = 5;
-            max += arr[8] -= arr[3] *= max *=2;
-            print(max, 5);
-            print(arr[3],5);
-
-            max = 10 - 8 - 2 - 7;
-            print(max,5);
-
-            return;
-        }       
+	void main()	int bodovi;
+	{
+	
+		bodovi = 0;
+		bodovi++;
+		bodovi = bodovi + jedan;
+		bodovi+=(bodovi *= pet);
+		bodovi--;
+		print(bodovi); 
+			
+		
+		niz = new int[2];
+		niz[0] = pet;
+		niz[1] = 10;
+		bodovi = (niz[1]/=niz[0]);
+		print(bodovi); 
+		print(niz[1]);
+		
+		
+		nizch = new char[3];
+		nizch[0] = 'a';
+		nizch[jedan] = 'b';
+		nizch[pet - 3] = 'c';
+		print( nizch[2 - 1]);
+		print( nizch[jedan * 2]);
+			
+		
+		bodovi += ((pet * jedan - 1) * 2 - (3 % 2 + 3 * 2 - 3) - 1 * 0); 
+		print(bodovi);
+			
+			
+		read(bodovi);
+		bodovi = bodovi + 1;
+		print(bodovi);
+			
+	
+	}
 }
+
+

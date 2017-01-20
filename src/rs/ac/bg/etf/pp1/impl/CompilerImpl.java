@@ -18,7 +18,6 @@ public class CompilerImpl {
     //type definition
     private static final int BOOL_TYPE = 6;
     private static final Struct boolType = new Struct(BOOL_TYPE);
-    public static final int ASSIGN_OP = 100;
     public static boolean errorFlag = false;
     //scopes
     private Scope universeScope;
@@ -30,8 +29,10 @@ public class CompilerImpl {
     public Obj mainMethod = null;
     private static boolean returnFlag;
     //
-    private int addOpCount=0;
-    private int mulOpCount=0;
+    private int addOpLeft = 0;
+    private int addOpRight = 0;
+    private int mulOpLeft = 0;
+    private int mulOpRight = 0;
     //
     private Struct currentType;
     private Struct currentClass;
@@ -117,6 +118,22 @@ public class CompilerImpl {
         }
     }
     
+     public void incrementAddOpRight(){
+        addOpRight++;
+    }
+    
+    public void incrementAddOpLeft(){
+        addOpLeft++;
+    }
+    
+    public void incrementMulOpRight(){
+        mulOpRight++;
+    }
+    
+    public void incrementMulOpLeft(){
+        mulOpLeft++;
+    }
+    
     //==========================================================================
     //PROGRAM
     //==========================================================================
@@ -131,10 +148,16 @@ public class CompilerImpl {
         universeScope = Tab.currentScope();
         //define types
         Tab.insert(Obj.Type, "bool", boolType);
+        
+        
         //define program
         currentProgram = Tab.insert(Obj.Prog, programName, Tab.noType);
         //increments scope level
         Tab.openScope();
+        Obj helper = new Obj(Obj.Var, "_tmp", new Struct(Struct.Int));
+        Tab.currentScope().addToLocals(new Obj(Obj.Type, "string",  new Struct(Struct.Array, Tab.charType)));
+        Tab.currentScope().addToLocals(new Obj(Obj.Type, "intArray",  new Struct(Struct.Array, Tab.intType)));
+        Tab.insert(helper.getKind(), helper.getName(), helper.getType());
         //sets current scope
         currentScope = Tab.currentScope();
         programScope = currentScope;       
@@ -155,6 +178,8 @@ public class CompilerImpl {
             reportInfo("Semantic analysis finished successfully");
         }
     }
+    
+    
     
     //==========================================================================
     //DEFINE
@@ -185,6 +210,7 @@ public class CompilerImpl {
             reportError("Name " + varName + " is already defined",line);
             return;
         }
+        
         Obj var = Tab.insert(Obj.Var, varName, currentType);
         
         if(isGlobal){
@@ -541,23 +567,27 @@ public class CompilerImpl {
             return;
         }
         
-        if(designator.getType().getKind()==Struct.Array){
-            if(designator.getType().getElemType().getKind() != Struct.Int){
-                reportError("Expression is not assignable to designator " + designator.getName(),line);
-                return;
-            }
-        }else{
-            if(designator.getType().getKind() != Struct.Int){
-                reportError("Expression is not assignable to designator " + designator.getName(),line);
-                return;
-            }
-        }
+//        if(designator.getType().getKind()==Struct.Array){
+//            if(designator.getType().getElemType().getKind() != Struct.Int){
+//                reportError("Expression is not assignable to designator " + designator.getName(),line);
+//                return;
+//            }
+//        }else{
+//            if(designator.getType().getKind() != Struct.Int){
+//                reportError("Expression is not assignable to designator " + designator.getName(),line);
+//                return;
+//            }
+//        }
         
         if(operation == 0){ // assign operation
             Code.store(designator);
         }else{
             if(designator.getType().getKind()==Struct.Array){
-                insertIntoStack(designator);
+                 Obj rightOperand = Tab.find("_tmp");
+                Code.store(rightOperand);
+                Code.put(Code.dup2);
+                Code.load(designator);
+                Code.load(rightOperand);
             } else {
                //generate code for non symmetrical operations on variables
                 Obj rightOperand = Tab.find("_tmp");
@@ -565,23 +595,10 @@ public class CompilerImpl {
                 Code.load(designator);
                 Code.load(rightOperand);
             }
-            if(operation >= ASSIGN_OP)
-                Code.put(operation-ASSIGN_OP);
-            else
-                Code.put(operation);
-            
+           
+            Code.put(operation);
             Code.store(designator);
-//            Obj tempObj = new Obj(Obj.Var,"",Tab.intType);
-//            Code.store(tempObj);
-//            if (designator.getKind() == Obj.Elem)
-//                Code.put(Code.dup2);
-//
-//
-//            
-//            Code.load(designator);
-//            Code.load(tempObj);
-//            Code.put(operation);
-//            Code.store(designator);
+
         }
 
         
@@ -598,16 +615,25 @@ public class CompilerImpl {
     
     public Struct checkInteger(Object t, int line) {
         Struct type = (Struct)t;
+        if(type.getKind() == Struct.Array){
+            if(type.getElemType() != Tab.intType)
+                reportError("Expression return type must be of type int ", line);
+        }
         if (type != Tab.intType)
         {
                 reportError("Expression return type must be of type int ", line);
-                return Tab.noType;
         }
         return type;
     }
     
     public void setFromDesignator(boolean p){
         factorComesFromDesignator = p;
+    }
+    
+    public void loadIfArray(Object o){
+        Obj obj = (Obj)o;
+        if(obj.getType().getKind() == Struct.Array)
+            Code.load(obj);
     }
     
 
@@ -621,11 +647,7 @@ public class CompilerImpl {
             Code.load(factor);
     }
     
-    public void incrementAddOp(){
-        addOpCount++;
-    }
-    
-    public Obj addOperation(Object l, Object op, Object r, int line){
+    public Obj addLeft(Object l, Object op, Object r, int line){
         Obj left = (Obj)l;
         Obj right = (Obj)r;
         Integer operation = (Integer)op;
@@ -642,28 +664,46 @@ public class CompilerImpl {
             reportError("Opearators must be of type int",line);
             return Tab.noObj;
         }
-        
-        if(operation > ASSIGN_OP){
-            //case when operation is assignable
-            if(left.getType().getKind()==Struct.Array)
-                insertIntoStack(left);
-            Code.put(operation - ASSIGN_OP);
-            Code.store(left);
-            Code.load(left);
-        }else{
-            if(left.getType().getKind()==Struct.Array){
-                Obj rightOperand = Tab.find("_tmp");
-                Code.store(rightOperand);
-                Code.load(left);
-                Code.load(rightOperand);
-            }else
-                Code.put(operation);
-        }
-        
-        addOpCount--;
-        return left;
+
+        //case when operation is assignable
+        if(left.getType().getKind()==Struct.Array)
+            insertIntoStack(left);
+        Code.put(operation);
+        Code.store(left);
+        Code.load(left);
+      
+        addOpLeft--;
+        return right;
     }
     
+    public Obj addRight(Object l, Object op, Object r, int line) {
+        Obj left = (Obj)l;
+        Obj right = (Obj)r;
+        Integer operation = (Integer)op;
+
+        Struct typeLeft = null;
+        if(left.getType().getKind()==Struct.Array) typeLeft = left.getType().getElemType();
+        else typeLeft = left.getType();
+        
+        Struct typeRight = null;
+        if(right.getType().getKind()==Struct.Array) typeRight = right.getType().getElemType();
+        else typeRight = right.getType();
+
+        if(typeLeft.getKind() != Struct.Int || typeRight.getKind() != Struct.Int){
+            reportError("Opearators must be of type int",line);
+            return Tab.noObj;
+        }
+
+        //case when operation is assignable
+        if(left.getType().getKind()==Struct.Array)
+            insertIntoStack(left);
+        Code.put(operation);
+        Code.store(left);
+        Code.load(left);
+      
+        addOpLeft--;
+        return left;
+    }
 
     
     
@@ -673,15 +713,11 @@ public class CompilerImpl {
     
     public void checkArrayFactor(Object f){
         Obj factor = (Obj)f;
-        if(factor.getType().getKind()==Struct.Array && factorComesFromDesignator && inAssign && mulOpCount>0)
+        if(factor.getType().getKind()==Struct.Array && factorComesFromDesignator && inAssign && mulOpLeft>0)
             Code.load(factor);
     }
-
-    public void incrementMulOp(){
-        mulOpCount++;
-    }
     
-    public Obj mulOperation(Object l, Object op, Object r, int line){
+    public Obj mulLeft(Object l, Object op, Object r, int line){
         Obj left = (Obj)l;
         Obj right = (Obj)r;
         Integer operation = (Integer)op;
@@ -698,25 +734,43 @@ public class CompilerImpl {
             reportError("Opearators must be of type int",line);
             return Tab.noObj;
         }
-        
-        if(operation >= ASSIGN_OP){
-            //case when operation is assignable
-            if(left.getType().getKind()==Struct.Array)
-                insertIntoStack(left);
-            Code.put(operation - ASSIGN_OP);
-            Code.store(left);
-            if(left.getType().getKind()!= Struct.Array || (mulOpCount > 1)) 
-                Code.load(left);
-        }else{
-            if(left.getType().getKind()==Struct.Array){
-                Obj rightOperand = Tab.find("_tmp");
-                Code.store(rightOperand);
-                Code.load(left);
-                Code.load(rightOperand);
-            }
-            Code.put(operation);
+
+        if(left.getType().getKind()==Struct.Array){
+            Obj rightOperand = Tab.find("_tmp");
+            Code.store(rightOperand);
+            Code.load(left);
+            Code.load(rightOperand);
         }
-        mulOpCount--;
+        Code.put(operation);
+        mulOpLeft--;
+        return right;
+    }
+    
+    public Obj mulRight(Object l, Object op, Object r, int line){
+        Obj left = (Obj)l;
+        Obj right = (Obj)r;
+        Integer operation = (Integer)op;
+        
+        Struct typeLeft = null;
+        if(left.getType().getKind()==Struct.Array) typeLeft = left.getType().getElemType();
+        else typeLeft = left.getType();
+        
+        Struct typeRight = null;
+        if(right.getType().getKind()==Struct.Array) typeRight = right.getType().getElemType();
+        else typeRight = right.getType();
+
+        if(typeLeft.getKind() != Struct.Int || typeRight.getKind() != Struct.Int){
+            reportError("Opearators must be of type int",line);
+            return Tab.noObj;
+        }
+        //case when operation is assignable
+        if(left.getType().getKind()==Struct.Array)
+            insertIntoStack(left);
+        Code.put(operation);
+        Code.store(left);
+        Code.load(left);
+        
+        mulOpRight--;
         return left;
     }
     
