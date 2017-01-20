@@ -7,14 +7,11 @@ import rs.etf.pp1.symboltable.concepts.*;
 import rs.ac.bg.etf.pp1.impl.CompilerImpl;
 import rs.etf.pp1.mj.runtime.*;
 
-// import java.io.*;
-
-
 parser code {:
 	
 	
 	
-	Logger log = Logger.getLogger(getClass());
+    Logger log = Logger.getLogger(getClass());
    
     //REDEFINE LOGGER METHODS
     //======================================================================================
@@ -44,18 +41,13 @@ parser code {:
     //======================================================================================
 :}
 
-
 action code {:
-	CompilerImpl impl = new CompilerImpl() ;
-	
+	CompilerImpl impl = new CompilerImpl() ;	
 :}
-
 
 init with {:
   Tab.init(); 
-  
 :}
-
 
 scan with {:
 	Symbol s = this.getScanner().next_token();
@@ -90,10 +82,8 @@ non terminal GlobalVarDeclarationList;
 non terminal GlobalVarList;
 non terminal GlobalVar;
 
-
 non terminal ClassDeclaration;
 non terminal ExtendedClass;
-
 
 non terminal MethodListExt;
 non terminal MethodList;
@@ -123,12 +113,11 @@ non terminal ForDesignatorStatement;
 
 non terminal DesignatorStatement;
 non terminal Designator;
-non terminal DesignatorRightList;
 non terminal DesignatorRight;
+non terminal ActualParameters;
 
 non terminal ExpressionWithSign;
 non terminal Expression;
-
 
 non terminal AssignOp;
 non terminal AddOp;
@@ -139,12 +128,8 @@ non terminal MulOpLeft;
 non terminal MulOpRight;
 non terminal RelOp;
 
-non terminal ActualParameters;
-
-non terminal Term;
 non terminal FactorList;
 non terminal Factor;
-
 
 non terminal LocalVarWrapper;
 non terminal LocalVarListExt;
@@ -152,10 +137,8 @@ non terminal LocalVarList;
 non terminal LocalVar;
 
 non terminal ConstDeclarationList;
-
 non terminal ConstList;
 non terminal ConstDecl;
-
 
 precedence left ELSE;
 
@@ -166,297 +149,218 @@ Program ::= PROG ProgramName:pName GlobalDeclarationList MethodListExt {: impl.e
 
 ProgramName ::= IDENT:stringProgramName {: impl.startProgram(stringProgramName); :};
 
-//=================
+//==============================================================================
 
-Type ::= IDENT:stringTypeName {: RESULT = impl.findType(stringTypeName, stringTypeNameleft); :};
-
-Value ::= NUMBER:object {: RESULT = object; :}
-          |
-          CHARCONST:object {: RESULT = object; :}
-          |
-          BOOLCONST:object {: RESULT = object; :}
-          ;
 
 //==============================================================================
 
-GlobalDeclarationList ::=   GlobalDeclarationList ClassDeclaration
-                            |
-                            GlobalDeclarationList ConstDeclarationList
-                            |
-                            GlobalDeclarationList GlobalVarDeclarationList
-                            |
-                            /*epsilon*/
-                            ;
-//=====
+GlobalDeclarationList ::=    GlobalDeclarationList ClassDeclaration
+                            |GlobalDeclarationList ConstDeclarationList
+                            |GlobalDeclarationList GlobalVarDeclarationList
+                            |/*epsilon*/;
+//==============================================================================
 
 ConstDeclarationList ::= CONST Type:structType {: impl.setCurrentType(structType); :} ConstList SEMI_COMMA ;
 
-
-ConstList ::=   ConstDecl COMMA ConstList
-                |
-                ConstDecl
-                ;
+ConstList ::=    ConstDecl COMMA ConstList
+                |ConstDecl;
 
 ConstDecl ::= IDENT:stringConstName ASSIGN Value:objectValue {: impl.defineConst(stringConstName,objectValue,stringConstNameleft); :};
 
-//=====
+
+Type ::= IDENT:stringTypeName {: RESULT = impl.findType(stringTypeName, stringTypeNameleft); :};
+
+Value ::=  NUMBER:object {: RESULT = object; :}
+          |CHARCONST:object {: RESULT = object; :}
+          |BOOLCONST:object {: RESULT = object; :};
+
+//==============================================================================
 
 GlobalVarDeclarationList ::= Type:structType {: impl.setCurrentType(structType); :} GlobalVarList SEMI_COMMA ;
 
-GlobalVarList ::= GlobalVar COMMA GlobalVarList
-                  |
-                  GlobalVar;
+GlobalVarList ::=  GlobalVar COMMA GlobalVarList
+                  |GlobalVar;
 
-GlobalVar ::= IDENT:stringVarName {: impl.defineVar(stringVarName,true,stringVarNameleft); :}
-              |
-              IDENT:stringVarName LSQUARE RSQUARE {: impl.defineArray(stringVarName, true, stringVarNameleft); :};
-
-
+GlobalVar ::=  IDENT:stringVarName {: impl.defineVar(stringVarName,true,stringVarNameleft); :}
+              |IDENT:stringVarName LSQUARE RSQUARE {: impl.defineArray(stringVarName, true, stringVarNameleft); :};
 
 //==============================================================================
 
 ClassDeclaration ::= CLASS IDENT:stringClassName {: impl.defineClass(stringClassName, stringClassNameleft); :}  ExtendedClass LBRACE LocalVarWrapper MethodListExt RBRACE {: impl.endClass(); :};
 
-ExtendedClass ::= EXTENDS Type
-                  |
-                  /*epsilon*/
-                  ;
+ExtendedClass ::=  EXTENDS Type
+                  |/*epsilon*/;
 
 //==============================================================================
 
-MethodListExt ::= LBRACE MethodList RBRACE
-                  |
-                  /*epsilon*/
-                  ;
+MethodListExt ::=  LBRACE MethodList RBRACE
+                  |/*epsilon*/;
 
-
-MethodList ::= MethodList Method
-                    |
-                    /*epsilon*/
-                    ;
+MethodList ::=  MethodList Method
+               |/*epsilon*/;
 
 Method ::= MethodStatic MethodReturnType LPAREN MethodArgWrapper RPAREN LocalVarWrapper {: impl.enterMethod(); :} LBRACE StatementList RBRACE:line {: impl.endMethod(lineleft); :} ;
 
-MethodStatic ::= STATIC
-                 |
-                 /*epsilon*/
-                 ;
+MethodStatic ::=  STATIC
+                 |/*epsilon*/;
 
-MethodReturnType ::= Type:stringTypeName IDENT:stringIdName {: impl.defineMethod(stringTypeName,stringIdName,stringIdNameleft); :}
-                     |
-                     VOID IDENT:stringTypeName {: impl.defineMethod(null, stringTypeName, stringTypeNameleft); :}
-                     ;
+MethodReturnType ::=  Type:stringTypeName IDENT:stringIdName {: impl.defineMethod(stringTypeName,stringIdName,stringIdNameleft); :}
+                     |VOID IDENT:stringTypeName {: impl.defineMethod(null, stringTypeName, stringTypeNameleft); :};
 
-MethodArgWrapper ::= MethodArgList
-                    |
-                    /*epsilon*/
-                    ;
+MethodArgWrapper ::=  MethodArgList
+                     |/*epsilon*/;
 
-MethodArgList ::= MethodArg
-                  |
-                  MethodArg COMMA MethodArgList
-                  ;
+MethodArgList ::=  MethodArg
+                  |MethodArg COMMA MethodArgList;
 
-MethodArg ::= Type:structType IDENT:stringIdName {: impl.defineMethodArg(structType, stringIdName, stringIdNameleft); :}
-              |
-              Type IDENT LSQUARE RSQUARE;
-
-
-
-//=========
-
-LocalVarWrapper ::= LocalVarWrapper LocalVarListExt
-                    |
-                    /*epsilon*/
-                    ;
-
-LocalVarListExt ::= Type:tName {: impl.setCurrentType(tName); :} LocalVarList SEMI_COMMA ;
-
-LocalVarList ::= LocalVar
-                 |
-                 LocalVar COMMA LocalVarList;
-                 
-
-LocalVar ::= IDENT:vName {: impl.defineVar(vName, false, vNameleft); :}
-             |
-             IDENT:vName LSQUARE RSQUARE {: impl.defineArray(vName, false, vNameleft); :};
+MethodArg ::=  Type:structType IDENT:stringIdName {: impl.defineMethodArg(structType, stringIdName, stringIdNameleft); :}
+              |Type IDENT LSQUARE RSQUARE;
 
 //==============================================================================
 
+LocalVarWrapper ::=  LocalVarWrapper LocalVarListExt
+                    |/*epsilon*/;
 
-StatementList ::= StatementList Statement
-                 |
-                 /*epsilon*/
-                 ;
+LocalVarListExt ::= Type:tName {: impl.setCurrentType(tName); :} LocalVarList SEMI_COMMA ;
 
-Statement ::= StatementSimple
-              |
-              StatementComplex;
+LocalVarList ::=  LocalVar
+                 |LocalVar COMMA LocalVarList;
+                 
+LocalVar ::=  IDENT:vName {: impl.defineVar(vName, false, vNameleft); :}
+             |IDENT:vName LSQUARE RSQUARE {: impl.defineArray(vName, false, vNameleft); :};
 
-StatementSimple ::= BREAK SEMI_COMMA
-                    |
-                    CONTINUE SEMI_COMMA
-                    |
-                    ReturnStatement SEMI_COMMA
-                    |
-                    DesignatorStatement SEMI_COMMA
-                    |
-                    READ LPAREN Designator:d RPAREN SEMI_COMMA {: impl.addRead(d, dleft); :}
-                    |
-                    PRINT LPAREN ExpressionWithSign:str RPAREN SEMI_COMMA {: impl.addPrint(str, 0, strleft); :}
-                    | 
-                    PRINT LPAREN ExpressionWithSign:str COMMA NUMBER:len RPAREN SEMI_COMMA {: impl.addPrint(str, len, strleft); :}
-                    ;
+//==============================================================================
+//STATEMENT
+//==============================================================================
+StatementList ::=  StatementList Statement
+                  |/*epsilon*/;
 
-StatementComplex ::= IfStatement
-                     |
-                     ForStatement
-                     |
-                     LBRACE StatementList RBRACE
-                     ;
+Statement ::=  StatementSimple
+              |StatementComplex;
 
-ReturnStatement ::= RETURN:l ExpressionWithSign:str  {: impl.returnMatched(str,lleft); :}
-                    |
-                    RETURN:l {: impl.returnMatched(Tab.noType,lleft); :}
-                    ;
 
-IfStatement ::= IfCondition Statement ELSE {: impl.endIfPart(); :} Statement {: impl.endIf(); :}
-                |
-                IfCondition Statement {: impl.endIf(); :} ;
+StatementComplex ::=  IfStatement
+                     |ForStatement
+                     |LBRACE StatementList RBRACE;
+
+ReturnStatement ::=  RETURN:l ExpressionWithSign:str  {: impl.returnMatched(str,lleft); :}
+                    |RETURN:l {: impl.returnMatched(Tab.noType,lleft); :};
+
+IfStatement ::=  IfCondition Statement ELSE {: impl.endIfPart(); :} Statement {: impl.endIf(); :}
+                |IfCondition Statement {: impl.endIf(); :} ;
 
 IfCondition ::= IF LPAREN Condition RPAREN;
 
-Condition ::= ConditionTerm {: impl.addConditionTerm(); :}
-              |
-              ConditionTerm OR Condition;
+Condition ::=  ConditionTerm {: impl.addConditionTerm(); :}
+              |ConditionTerm OR Condition;
 
-ConditionTerm ::=   ConditionFact
-                    |
-                    ConditionFact AND ConditionTerm;
+ConditionTerm ::=    ConditionFact
+                    |ConditionFact AND ConditionTerm;
 
-ConditionFact ::= ExpressionWithSign:expr1 {: impl.addConditionFact(expr1,expr1left); :}
-                  |
-                  ExpressionWithSign:expr1 RelOp:integerOpCode ExpressionWithSign:expr2 {: impl.addConditionFact(expr1,integerOpCode, expr2, integerOpCodeleft); :}
-                  ;
+ConditionFact ::=  ExpressionWithSign:expr1 {: impl.addConditionFact(expr1,expr1left); :}
+                  |ExpressionWithSign:expr1 RelOp:integerOpCode ExpressionWithSign:expr2 {: impl.addConditionFact(expr1,integerOpCode, expr2, integerOpCodeleft); :};
 
 ForStatement ::= ForCondition Statement;
 
 ForCondition ::= FOR LPAREN ForDesignatorStatement SEMI_COMMA Condition SEMI_COMMA ForDesignatorStatement RPAREN;
 
-ForDesignatorStatement ::= DesignatorStatement
-                           |
-                           /*epsilon*/
-                           ;
+ForDesignatorStatement ::=  DesignatorStatement
+                           |/*epsilon*/;
 
 
-DesignatorStatement ::= Designator:obj AssignOp:op ExpressionWithSign:structExprType {: impl.addAssign(obj,op,structExprType,objleft); :}
-                        |
-                        Designator LPAREN ActualParameters RPAREN
-                        |
-                        Designator:obj INC:l {: impl.addIncrement(obj,lleft); :}
-                        |
-                        Designator:obj DEC:l {: impl.addDecrement(obj,lleft); :}; 
+StatementSimple ::=  BREAK SEMI_COMMA
+                    |CONTINUE SEMI_COMMA
+                    |ReturnStatement SEMI_COMMA
+                    |DesignatorStatement SEMI_COMMA
+                    |READ LPAREN Designator:d RPAREN SEMI_COMMA {: impl.addRead(d, dleft); :}
+                    |PRINT LPAREN ExpressionWithSign:str RPAREN SEMI_COMMA {: impl.addPrint(str, 0, strleft); :}
+                    |PRINT LPAREN ExpressionWithSign:str COMMA NUMBER:len RPAREN SEMI_COMMA {: impl.addPrint(str, len, strleft); :};
+
+//==============================================================================
+//DESIGNATOR //returns Obj
+//==============================================================================
+
+DesignatorStatement ::=  Designator:obj {: impl.setInAssign(true); :} AssignOp:op  ExpressionWithSign:structExpression {: impl.addAssign(obj,op,structExpression,objleft); impl.setInAssign(false); :}
+                        |Designator LPAREN ActualParameters RPAREN
+                        |Designator:obj INC {: impl.addIncrement(obj,objleft); :}
+                        |Designator:obj DEC {: impl.addDecrement(obj,objleft); :}; 
+
+Designator ::=   Designator DOT DesignatorRight
+                |DesignatorRight:obj {: RESULT = obj; :};
+
+DesignatorRight ::=  IDENT:id {: impl.setDesignatorArrayExtension(id,idleft);  :} LSQUARE {: impl.designatorExtensionResolveArray(idleft); :} ExpressionWithSign:ex {: impl.checkInteger(ex,exleft); :} RSQUARE {: RESULT = impl.designatorResolveIdentificator(id,idleft); :}
+                    |IDENT:id {: RESULT = impl.designatorResolveIdentificator(id,idleft); :};
 
 ActualParameters ::= ExpressionWithSign COMMA ActualParameters
                      |
                      ExpressionWithSign;
 
-ExpressionWithSign ::= SUB Expression:str {: RESULT = impl.checkInteger(str,strleft); impl.addNegation(); :}
-                       |
-                       Expression:str {: RESULT = str; :} ;
+//==============================================================================
+//EXPRESSION //returns Struct
+//==============================================================================
 
-Expression ::= Term:structTerm AddOp:intOpCode Expression:structExpression {: RESULT = impl.addOperation(structTerm,intOpCode,structExpression,intOpCodeleft); :}
-               |
-               Term:term {: RESULT = term; :};
-                  
-Term ::= FactorList:obj {: RESULT = obj; :};
+ExpressionWithSign ::=  SUB Expression:objExpression {: RESULT = impl.checkInteger(((Obj)objExpression).getType(),objExpressionleft); impl.addNegation(); :}
+                       |Expression:objExpression {: RESULT = ((Obj)objExpression).getType(); impl.setFromDesignator(false); :} ;
 
-FactorList ::= FactorList:structFactorListType MulOp:intOpCode Factor:structFactorType {: RESULT = impl.addOperation(structFactorListType,intOpCode,structFactorType,intOpCodeleft); :}
-                |
-               Factor:structType {: RESULT = structType; :};
+Expression ::=  FactorList:objFactorList  AddOp:intOpCode {: impl.incrementAddOp(); :} Expression:objExpression {: RESULT = impl.addOperation(objFactorList,intOpCode,objExpression,intOpCodeleft);  :}
+               |FactorList:objFactorList {: RESULT = objFactorList; impl.checkArrayFactorList(objFactorList); :};
 
-Factor ::= Designator:obj {: impl.loadVariable(obj); RESULT = ((Obj)obj).getType(); :}
-           |
-           Designator LPAREN RPAREN
-           |
-           Designator LPAREN ExpressionWithSign RPAREN
-           |
-           NUMBER:integerConst {: impl.loadConstInteger(integerConst); RESULT = Tab.intType; :}
-           |
-           CHARCONST:charConst {: impl.loadConstChar(charConst); RESULT = Tab.charType; :}
-           |
-           BOOLCONST:boolConst {: impl.loadConstBool(boolConst); RESULT = new Struct(Struct.Bool); :}
-           |
-           NEW Type
-           |
-           NEW Type:structType LSQUARE ExpressionWithSign:objExpr RSQUARE {: RESULT = impl.createArray(structType,objExpr,structTypeleft); :}
-           |
-           LPAREN ExpressionWithSign:structExpr RPAREN {: RESULT = structExpr; :}
+FactorList ::=   Factor:objFactor MulOp:intOpCode {: impl.incrementMulOp(); :}  FactorList:objFactorList {: RESULT = impl.mulOperation(objFactor,intOpCode,objFactorList,intOpCodeleft); :}
+                |Factor:objFactor {: RESULT = objFactor; impl.checkArrayFactor(objFactor); :};
+
+Factor ::=  Designator:obj {: RESULT = impl.loadDesignator(obj); :}
+           |Designator LPAREN RPAREN {: :}
+           |Designator LPAREN ExpressionWithSign RPAREN
+           |NUMBER:integerConst {: RESULT = impl.loadConstInteger(integerConst); :}
+           |CHARCONST:charConst {: RESULT = impl.loadConstChar(charConst); :}
+           |BOOLCONST:boolConst {: RESULT = impl.loadConstBool(boolConst); :}
+           |NEW Type {: :}
+           |NEW Type:structType LSQUARE ExpressionWithSign:objExpr RSQUARE {: RESULT = impl.createArray(structType,objExpr,structTypeleft); :}
+           |LPAREN ExpressionWithSign:structExpression RPAREN {: RESULT = impl.createExpression(structExpression); :}
            ;
 
-Designator ::= DesignatorRightList:obj {: RESULT=obj; :};
+//==============================================================================
+//OPERATION // returns Integer
+//==============================================================================
 
-DesignatorRightList ::= DesignatorRightList DOT DesignatorRight
-                        |
-                        DesignatorRight:id {: RESULT = impl.getObj((String)id,idleft); :};
-
-DesignatorRight ::= IDENT:id LSQUARE ExpressionWithSign:ex RSQUARE {: RESULT = impl.getArrayElem(id,ex,idleft); :}
-                    |
-                    IDENT:id {: RESULT = id; :} ;
-
-//====================================================================================================================
-
-AssignOp ::= ASSIGN {: RESULT = new Integer(0); :}  
-             | 
-             AddOpRight:intOpCode {: RESULT = intOpCode; :} 
-             |
-             MulOpRight:intOpCode {: RESULT = intOpCode; :}
+AssignOp ::=  ASSIGN {: RESULT = new Integer(0); :}  
+             |AddOpRight:intOpCode {: RESULT = intOpCode;  :} 
+             |MulOpRight:intOpCode {: RESULT = intOpCode;  :}
              ;
 
-RelOp ::=   EQ {: RESULT = new Integer(Code.eq); :}
-            | 
-            NEQ {: RESULT = new Integer(Code.ne); :}
-            | 
-            BGE {: RESULT = new Integer(Code.ge); :}
-            | 
-            BLE {: RESULT = new Integer(Code.le); :}
-            | 
-            BGR {: RESULT = new Integer(Code.gt); :}
-            | 
-            BLS {: RESULT = new Integer(Code.lt); :}
+RelOp ::=    EQ {: RESULT = new Integer(Code.eq); :}
+            |NEQ {: RESULT = new Integer(Code.ne); :}
+            |BGE {: RESULT = new Integer(Code.ge); :}
+            |BLE {: RESULT = new Integer(Code.le); :}
+            |BGR {: RESULT = new Integer(Code.gt); :}
+            |BLS {: RESULT = new Integer(Code.lt); :}
             ;
 
-AddOp ::= AddOpLeft:intOpCode {: RESULT = intOpCode; :}
-          |
-          AddOpRight:intOpCode {: RESULT = intOpCode; :}
+AddOp ::=  AddOpLeft:intOpCode {: RESULT = intOpCode;  :}
+          |AddOpRight:intOpCode {: RESULT = intOpCode; :}
           ;
 
-AddOpLeft ::= ADD {: RESULT = new Integer(Code.add); :}
-              |
-              SUB {: RESULT = new Integer(Code.sub); :};
+AddOpLeft ::=  ADD {: RESULT = new Integer(Code.add); :}
+              |SUB {: RESULT = new Integer(Code.sub); :};
 
-AddOpRight ::= ASSIGN_ADD {: RESULT = new Integer(Code.add); :} 
-               |
-               ASSIGN_SUB {: RESULT = new Integer(Code.sub); :} 
+AddOpRight ::=  ASSIGN_ADD {: RESULT = new Integer(impl.ASSIGN_OP + Code.add);  :} 
+               |ASSIGN_SUB {: RESULT = new Integer(impl.ASSIGN_OP + Code.sub); :} 
                ;
 
-MulOp ::= MulOpLeft:intOpCode {: RESULT = intOpCode; :}
-          |
-          MulOpRight:intOpCode {: RESULT = intOpCode; :}
+MulOp ::=  MulOpLeft:intOpCode {: RESULT = intOpCode;  :}
+          |MulOpRight:intOpCode {: RESULT = intOpCode;  :}
           ;
 
-MulOpRight ::= ASSIGN_MUL {: RESULT = new Integer(Code.mul); :} 
-               |
-               ASSIGN_DIV {: RESULT = new Integer(Code.div); :} 
-               |
-               ASSIGN_MOD {: RESULT = new Integer(Code.rem); :} 
+MulOpRight ::=  ASSIGN_MUL {: RESULT = new Integer(impl.ASSIGN_OP + Code.mul); :} 
+               |ASSIGN_DIV {: RESULT = new Integer(impl.ASSIGN_OP + Code.div); :} 
+               |ASSIGN_MOD {: RESULT = new Integer(impl.ASSIGN_OP + Code.rem); :} 
                ;
 
-MulOpLeft ::=  MUL {: RESULT = new Integer(Code.mul); :}
-               |
-               DIV {: RESULT = new Integer(Code.div); :}
-               |
-               MOD {: RESULT = new Integer(Code.rem); :};
+MulOpLeft ::=   MUL {: RESULT = new Integer(Code.mul); :}
+               |DIV {: RESULT = new Integer(Code.div); :}
+               |MOD {: RESULT = new Integer(Code.rem); :}
+               ;
 
-
-
+//==============================================================================
+//
+//==============================================================================

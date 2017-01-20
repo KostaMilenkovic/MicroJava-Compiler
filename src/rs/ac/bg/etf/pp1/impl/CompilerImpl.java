@@ -18,7 +18,7 @@ public class CompilerImpl {
     //type definition
     private static final int BOOL_TYPE = 6;
     private static final Struct boolType = new Struct(BOOL_TYPE);
-    
+    public static final int ASSIGN_OP = 100;
     public static boolean errorFlag = false;
     //scopes
     private Scope universeScope;
@@ -29,6 +29,9 @@ public class CompilerImpl {
     public Obj currentMethod = null;
     public Obj mainMethod = null;
     private static boolean returnFlag;
+    //
+    private int addOpCount=0;
+    private int mulOpCount=0;
     //
     private Struct currentType;
     private Struct currentClass;
@@ -44,11 +47,18 @@ public class CompilerImpl {
     public int localDataPtr = 0;
     
     public static final int operationCodes[] = {0, Code.add, Code.sub, Code.mul, Code.div, Code.rem};
-    
+    private Obj obj1;
+    private Obj obj2;
+    private Integer index;
     //condition
     private int currentConditionAddress;
     private int conditionOperation;
     private Stack<Integer> fixup  = new Stack<Integer>();
+    private Stack<Obj> arrayElemStack = new Stack<Obj>();
+    
+    private boolean inAssign = false;
+    private boolean factorComesFromDesignator = false;
+    private Obj currentDesignator = null;
     
     //==========================================================================
     
@@ -71,7 +81,8 @@ public class CompilerImpl {
     }
     
     //==========================================================================
-   
+    //UTIL
+    //==========================================================================
     
     public void reportError(String msg, int line) {
         errorFlag = true;
@@ -79,7 +90,7 @@ public class CompilerImpl {
     }
 
     public void reportInfo(String msg, int line) {
-        //System.out.println("INFO: " + msg + " on line : " + line);
+        System.out.println("INFO: " + msg + " on line : " + line);
     }
 	
     public void reportError(String msg) {
@@ -88,8 +99,27 @@ public class CompilerImpl {
     }
 
     public void reportInfo(String msg) {
-        //System.out.println("INFO: " + msg);
+        System.out.println("INFO: " + msg);
     }
+    
+        
+    public void dump(){
+        if (CompilerImpl.errorFlag) {
+            reportError("BUILD FAILED");
+            return;
+        }
+        try {
+            reportInfo("BUILD SUCCESSFUL");
+            OutputStream output = new FileOutputStream("mydist/program.obj");
+            Code.write(output);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    //==========================================================================
+    //PROGRAM
+    //==========================================================================
         
     public void setCurrentType(Object type){
         this.currentType = (Struct)type;
@@ -124,9 +154,10 @@ public class CompilerImpl {
         }else{
             reportInfo("Semantic analysis finished successfully");
         }
-        //dump();
     }
     
+    //==========================================================================
+    //DEFINE
     //==========================================================================
     
     public void defineConst(String constName, Object value, int line){
@@ -146,8 +177,7 @@ public class CompilerImpl {
         //===============
         
         Tab.insert(Obj.Con, constName, currentType).setAdr(adr);
-        constCnt++;
-        
+        constCnt++; 
     }
     
     public void defineVar(String varName, boolean isGlobal, int line){
@@ -187,52 +217,12 @@ public class CompilerImpl {
             arrayVar.setAdr(localDataPtr);
             localDataPtr++;
             localArrayCnt++;
-        }
-        
+        }        
     }
-    
-    public Struct createArray(Object t, Object e, int line){
-        Struct type = (Struct)t;
-        Struct expression = (Struct)e;
-        
-        if(!expression.assignableTo(Tab.intType)){
-            reportError("Array size expression must return an int value",line);
-            return Tab.noType;
-        }
-        
-        Code.put(Code.newarray);
-        
-        if (type.getKind() == Struct.Char)    
-            Code.put(0);
-        if (type.getKind() == Struct.Int)
-            Code.put(1);
-        
-        
-        Struct arrayType = new Struct(Struct.Array,type);
-        
-        return arrayType;
-        
-    }
-    
-    public String getArrayElem(String ident,Object e,int line){
-        Struct expression = (Struct)e;
-        
-        Obj obj = getObj(ident,line);
-        Obj tempObj = new Obj(Obj.Var,"",Tab.intType);
-        Code.store(tempObj);
-        
-        Code.load(obj);
-        Code.load(tempObj);
-        
-        if(!expression.assignableTo(Tab.intType)){
-            reportError("Array index expression must be of int type",line);
-            return ident + "[]";
-        }
-        
-        return ident + "[]";
-    }
-    
+
     //==========================================================================    
+    //METHOD
+    //==========================================================================
     public void defineMethod(Object mType, String methodName, int line){
         currentMethod = null;
         returnFlag = false;
@@ -335,6 +325,7 @@ public class CompilerImpl {
 
     }
     //==========================================================================
+    //CLASS
     //==========================================================================
     public void defineClass(String className, int line){
         if(Tab.currentScope().findSymbol(className) != null){
@@ -368,42 +359,27 @@ public class CompilerImpl {
         }
         return obj.getType();
     }
-    
-    
 
-    
     //==========================================================================
-    public Obj getObj(String objName, int line){
-
-        //arrays
-        if (objName.contains("[]")){
-            
-            String elem = objName.substring(0, objName.lastIndexOf("[]"));
-            Obj base = Tab.find(elem);
-            
-            if(base.equals(Tab.noObj))
-                return Tab.noObj;
-            
-            return new Obj(Obj.Elem, "", base.getType().getElemType());
-        }
-        Obj objFound = Tab.find(objName);
-        
-        if(objFound.equals(Tab.noObj)){
-            reportError("Unknown identifier " + objName,line);
-            return Tab.noObj;
-        }
-        return objFound;
-    }
     
     public void addIncrement(Object obj, int line){
         Obj designator = (Obj)obj;
+        Struct type = null;
+        if(designator.getType().getKind()==Struct.Array)
+            type = designator.getType().getElemType();
+        else
+            type = designator.getType();
         
         if(designator == Tab.noObj){
             reportError("Increment statement not valid",line);
             return;
         }
-        if(!designator.getType().equals(Tab.intType)) {
-            reportError("Identifier must be of type int", line);
+        if(designator.getKind() != Obj.Var && designator.getKind() != Obj.Elem){
+            reportError("Increment statement not valid, identifier is not a variable ",line);
+            return;
+        }
+        if(type.getKind()!=Struct.Int) {
+            reportError("Variable must be of type int", line);
             return;
         }
         //push increment instruction on stack
@@ -417,11 +393,21 @@ public class CompilerImpl {
      
     public void addDecrement(Object obj, int line){
         Obj designator = (Obj)obj;
+        Struct type = null;
+        if(designator.getType().getKind()==Struct.Array)
+            type = designator.getType().getElemType();
+        else
+            type = designator.getType();
+        
         if(designator == Tab.noObj){
-            reportError("Decrement statement not valid",line);
+            reportError("Increment statement not valid",line);
             return;
         }
-        if(!designator.getType().equals(Tab.intType)) {
+        if(designator.getKind() != Obj.Var && designator.getKind() != Obj.Elem){
+            reportError("Increment statement not valid, identifier is not a variable ",line);
+            return;
+        }
+        if(type.getKind()!=Struct.Int) {
             reportError("Identifier must be of type int", line);
             return;
         }
@@ -434,19 +420,23 @@ public class CompilerImpl {
         Code.store(designator);
     }
     
-    public void addPrint(Object obj, Object len, int line){
-        Struct designator = (Struct)obj;
+    public void addPrint(Object t, Object len, int line){
+        Struct expressionType = (Struct)t;
         Integer length = (Integer)len;
-        if(designator != Tab.charType && designator != Tab.intType){
+        Struct type = null;
+        if(expressionType.getKind()==Struct.Array)
+            type = expressionType.getElemType();
+        else
+            type = expressionType;
+        
+        if(type.getKind() != Struct.Int && type.getKind() != Struct.Char){
             reportError("Print paremeter must be of type int or char",line);
             return;            
         }
-        if(designator == Tab.intType){
-            //push print int on expression stack
+        if(type.getKind() == Struct.Int){
             Code.loadConst(length);
             Code.put(Code.print);
         }else{
-            //push print char on expression stack
             Code.loadConst(length);
             Code.put(Code.bprint);
         }
@@ -455,16 +445,25 @@ public class CompilerImpl {
     
     public void addRead(Object obj, int line){
         Obj designator = (Obj)obj;
-        if(designator == null){
-            reportError("TODO: null exception ",line);
-            return;
-        }
+        
+        Struct type = null;
+        if(designator.getType().getKind()==Struct.Array)
+            type = designator.getType().getElemType();
+        else
+            type = designator.getType();
+        
         if(designator.getKind()!=Obj.Var){
             reportError("Read parameter " + designator.getName() + " is not a variable",line);
             return;
         }
         
-        if (designator.getType() == Tab.intType){
+        if(type.getKind() != Struct.Int && type.getKind() != Struct.Char){
+            reportError("Read paremeter must be of type int or char",line);
+            return;            
+        }
+        
+        
+        if (type.getKind() == Struct.Int){
                 Code.put(Code.read);
                 Code.store(designator);
         }
@@ -472,6 +471,129 @@ public class CompilerImpl {
                 Code.put(Code.bread);
                 Code.store(designator);
         }
+    }
+
+    
+    //==========================================================================
+    //DESIGNATOR_STATEMENT
+    //==========================================================================   
+   
+    
+    public void setInAssign(boolean p){
+        inAssign = p;
+    }
+    
+    
+    //==========================================================================
+    //DESIGNATOR
+    //==========================================================================   
+
+    
+    //==========================================================================
+    //DESIGNATOR_RIGHT
+    //==========================================================================    
+    
+
+    
+    public void setDesignatorArrayExtension(String ident,int line){
+        Obj temp = Tab.find(ident);
+        if(temp.equals(Tab.noObj)){
+            reportError("undefined variable",line);
+            return;
+        }
+        if(temp.getType().getKind()==Struct.Array)
+            currentDesignator = temp;
+    }    
+    
+    
+    public Obj designatorExtensionResolveArray(int line){
+        Obj res = null;
+        if(currentDesignator.getType().getKind() != Struct.Array){
+            reportError("variable not of array type",line);
+            return Tab.noObj;
+        }else{
+            Code.load(currentDesignator);
+            res = new Obj(Obj.Elem, currentDesignator.getName(),new Struct(Struct.Array, currentDesignator.getType().getElemType()));
+            currentDesignator = res;
+        }
+        return res;
+    }
+    
+            
+    public Obj designatorResolveIdentificator(String ident, int line){
+        Obj res = null;
+        if(currentDesignator != null){
+            res = currentDesignator;
+        }else{
+            res = Tab.find(ident);
+        }
+        currentDesignator = null;
+        return res; 
+    }    
+     
+    public void addAssign(Object d,Object op, Object e,int line){
+        Obj designator = (Obj)d;
+        Struct expression = (Struct)e;
+        Integer operation = (Integer)op;
+        
+        if(designator.getKind()==Obj.Con){
+            reportError("Expression is not assignable to constant " + designator.getName(),line);
+            return;
+        }
+        
+        if(designator.getType().getKind()==Struct.Array){
+            if(designator.getType().getElemType().getKind() != Struct.Int){
+                reportError("Expression is not assignable to designator " + designator.getName(),line);
+                return;
+            }
+        }else{
+            if(designator.getType().getKind() != Struct.Int){
+                reportError("Expression is not assignable to designator " + designator.getName(),line);
+                return;
+            }
+        }
+        
+        if(operation == 0){ // assign operation
+            Code.store(designator);
+        }else{
+            if(designator.getType().getKind()==Struct.Array){
+                insertIntoStack(designator);
+            } else {
+               //generate code for non symmetrical operations on variables
+                Obj rightOperand = Tab.find("_tmp");
+                Code.store(rightOperand);
+                Code.load(designator);
+                Code.load(rightOperand);
+            }
+            if(operation >= ASSIGN_OP)
+                Code.put(operation-ASSIGN_OP);
+            else
+                Code.put(operation);
+            
+            Code.store(designator);
+//            Obj tempObj = new Obj(Obj.Var,"",Tab.intType);
+//            Code.store(tempObj);
+//            if (designator.getKind() == Obj.Elem)
+//                Code.put(Code.dup2);
+//
+//
+//            
+//            Code.load(designator);
+//            Code.load(tempObj);
+//            Code.put(operation);
+//            Code.store(designator);
+        }
+
+        
+    }
+    
+    //==========================================================================
+    //EXPRESSION_WITH_SIGN
+    //==========================================================================    
+    
+    
+    public void addNegation(){
+        Code.put(Code.neg);
     }
     
     public Struct checkInteger(Object t, int line) {
@@ -484,91 +606,203 @@ public class CompilerImpl {
         return type;
     }
     
-    public void loadConstInteger(Integer constInteger){
-        Code.loadConst(constInteger);
+    public void setFromDesignator(boolean p){
+        factorComesFromDesignator = p;
     }
     
-    public void loadConstChar(Character constChar){
-        Code.loadConst(constChar);
-    }
-    
-    public void loadConstBool(Boolean constBool){
-        Code.loadConst(constBool?1:0);
-    }
-    
-    public void addAssign(Object d,Object op, Object e,int line){
-        Obj designator = (Obj)d;
-        Struct expression = (Struct)e;
-        Integer operation = (Integer)op;
-        
-        if(designator.getKind()==Obj.Con){
-            reportError("Expression is not assignable to constant " + designator.getName(),line);
-            return;
-        }
-        
-        if(!expression.assignableTo(designator.getType())){
-            reportError("Expression is not assignable to designator " + designator.getName(),line);
-            return;
-        }
-        
-        if(operation == 0){ // assign operation
-            Code.store(designator);
-        }else{
-            Obj tempObj = new Obj(Obj.Var,"",Tab.intType);
-            Code.store(tempObj);
-            if (designator.getKind() == Obj.Elem)
-                Code.put(Code.dup2);
-            Code.load(designator);
-            Code.load(tempObj);
-            Code.put(operation);
-            Code.store(designator);
-            
-            
-            
-        }
 
+    //==========================================================================
+    //EXPRESSION
+    //==========================================================================
+    
+    public void checkArrayFactorList(Object f){
+        Obj factor = (Obj)f;
+        if(factor.getType().getKind()==Struct.Array && factorComesFromDesignator && inAssign)
+            Code.load(factor);
+    }
+    
+    public void incrementAddOp(){
+        addOpCount++;
+    }
+    
+    public Obj addOperation(Object l, Object op, Object r, int line){
+        Obj left = (Obj)l;
+        Obj right = (Obj)r;
+        Integer operation = (Integer)op;
+
+        Struct typeLeft = null;
+        if(left.getType().getKind()==Struct.Array) typeLeft = left.getType().getElemType();
+        else typeLeft = left.getType();
         
+        Struct typeRight = null;
+        if(right.getType().getKind()==Struct.Array) typeRight = right.getType().getElemType();
+        else typeRight = right.getType();
+
+        if(typeLeft.getKind() != Struct.Int || typeRight.getKind() != Struct.Int){
+            reportError("Opearators must be of type int",line);
+            return Tab.noObj;
+        }
+        
+        if(operation > ASSIGN_OP){
+            //case when operation is assignable
+            if(left.getType().getKind()==Struct.Array)
+                insertIntoStack(left);
+            Code.put(operation - ASSIGN_OP);
+            Code.store(left);
+            Code.load(left);
+        }else{
+            if(left.getType().getKind()==Struct.Array){
+                Obj rightOperand = Tab.find("_tmp");
+                Code.store(rightOperand);
+                Code.load(left);
+                Code.load(rightOperand);
+            }else
+                Code.put(operation);
+        }
+        
+        addOpCount--;
+        return left;
     }
     
-    public void loadVariable(Object obj){
-        Obj variable = (Obj)obj;
-        //push variable on expression stack
-        Code.load(variable);
+
+    
+    
+    //==========================================================================
+    //FACTOR_LIST 
+    //==========================================================================
+    
+    public void checkArrayFactor(Object f){
+        Obj factor = (Obj)f;
+        if(factor.getType().getKind()==Struct.Array && factorComesFromDesignator && inAssign && mulOpCount>0)
+            Code.load(factor);
+    }
+
+    public void incrementMulOp(){
+        mulOpCount++;
     }
     
-    public Struct addOperation(Object l, Object op, Object r, int line){
-        Struct left = (Struct)l;
-        Struct right = (Struct)r;
+    public Obj mulOperation(Object l, Object op, Object r, int line){
+        Obj left = (Obj)l;
+        Obj right = (Obj)r;
         Integer operation = (Integer)op;
         
-        if(left != Tab.intType || right != Tab.intType){
+        Struct typeLeft = null;
+        if(left.getType().getKind()==Struct.Array) typeLeft = left.getType().getElemType();
+        else typeLeft = left.getType();
+        
+        Struct typeRight = null;
+        if(right.getType().getKind()==Struct.Array) typeRight = right.getType().getElemType();
+        else typeRight = right.getType();
+
+        if(typeLeft.getKind() != Struct.Int || typeRight.getKind() != Struct.Int){
             reportError("Opearators must be of type int",line);
-            return Tab.noType;
+            return Tab.noObj;
         }
         
-        Code.put(operation.intValue());
-        return Tab.intType;
-    }
-    
-    
-    public void addNegation(){
-        Code.put(Code.neg);
-    }
-    
-    public void dump(){
-        if (CompilerImpl.errorFlag) {
-            reportError("BUILD FAILED");
-            return;
+        if(operation >= ASSIGN_OP){
+            //case when operation is assignable
+            if(left.getType().getKind()==Struct.Array)
+                insertIntoStack(left);
+            Code.put(operation - ASSIGN_OP);
+            Code.store(left);
+            if(left.getType().getKind()!= Struct.Array || (mulOpCount > 1)) 
+                Code.load(left);
+        }else{
+            if(left.getType().getKind()==Struct.Array){
+                Obj rightOperand = Tab.find("_tmp");
+                Code.store(rightOperand);
+                Code.load(left);
+                Code.load(rightOperand);
+            }
+            Code.put(operation);
         }
-        try {
-            reportInfo("BUILD SUCCESSFUL");
-            OutputStream output = new FileOutputStream("mydist/program.obj");
-            Code.write(output);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+        mulOpCount--;
+        return left;
     }
     
+    public void insertIntoStack(Obj designator) {
+        
+        Obj right = Tab.find("_tmp");
+        Code.store(right);
+        Code.put(Code.dup2);
+        Code.put(Code.dup2);
+        Code.load(designator);
+        Code.load(right);
+    }
+    
+    
+    //==========================================================================
+    //FACTOR 
+    //==========================================================================
+
+     public Obj loadConstInteger(Integer constInteger){
+        Obj res = new Obj(Obj.Con,"",Tab.intType);
+        res.setAdr(constInteger);
+        Code.loadConst(constInteger);
+        return res;
+    }
+    
+    public Obj loadConstChar(Character constChar){
+        Obj res = new Obj(Obj.Con,"",Tab.charType);
+        res.setAdr(constChar);
+        Code.loadConst(constChar);
+        return res;
+    }
+    
+    public Obj loadConstBool(Boolean constBool){
+        Obj res = new Obj(Obj.Con,"",new Struct(Struct.Bool));
+        res.setAdr(constBool?1:0);
+        Code.loadConst(constBool?1:0);
+        return res;
+    }
+    
+    public Obj loadDesignator(Object obj){
+        Obj variable = (Obj)obj;
+        Obj res = null;
+        if(variable == Tab.noObj)
+            res = variable;
+        else{
+            res = variable;
+            if(res.getType().getKind() != Struct.Array)
+                Code.load(res);
+            else if (res.getType().getKind() == Struct.Array && !inAssign)
+                Code.load(res);
+                
+        }
+        factorComesFromDesignator = true;
+        
+        return res;        
+    }
+    
+    public Obj createArray(Object t, Object e, int line){
+        Struct type = (Struct)t;
+        Struct expression = (Struct)e;
+        Obj res = null;
+        
+        if(!expression.assignableTo(Tab.intType)){
+            reportError("Array size expression must return an int value",line);
+            return Tab.noObj;
+        }
+        res = new Obj(Obj.Elem,"",new Struct(Struct.Array,type));
+        
+        Code.put(Code.newarray);
+        if (type.getKind() == Struct.Char)    
+            Code.put(0);
+        if (type.getKind() == Struct.Int)
+            Code.put(1);
+        
+        return res;
+    }
+    
+    public Obj createExpression(Object e){
+        Struct expression = (Struct)e;
+        Obj res = new Obj(expression.getKind(),"",expression);
+        return res;
+    }
+    
+    //==========================================================================
+    //LEVEL 2
+    //==========================================================================
     
     public void addConditionFact(Object e, int line){
         Struct expression = (Struct)e;

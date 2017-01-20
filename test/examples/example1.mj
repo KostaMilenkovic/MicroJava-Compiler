@@ -1,11 +1,9 @@
 program myProgram
-    
     int v1;
     int v2, v3;
     char c1;
     int globArr[];
     const int N = 5;
-
 {
     void main ()
         int l1;
@@ -13,24 +11,30 @@ program myProgram
         int arr[];
         int max,min;
         int a,b;
-
         {
+            arr = new int[20];
+            arr[3] = 3;
+            arr[4] = 5;
+            arr[8] = 6;
+            arr[7] = 28;
+            arr[8]++;
+            arr[9] = 3 + arr[8] * ( 2 + 1 + 2 ); //38
+            arr[8] += arr[7] /= arr[8] *= arr[4] %= arr[3];
 
-            //==================
+            print(arr[3],3);
+            print(arr[4],3);
+            print(arr[7],3);
+            print(arr[8],3);
+            print(arr[9],3);
 
-            a = 5;
-            b = 24;
-            max = 0;
-            min = 100;
+            max = 5;
+            max += arr[8] -= arr[3] *= max *=2;
+            print(max, 5);
+            print(arr[3],5);
 
-            if(a>max && b<max || a<max){
-                print(a,10);
-                print(b,10);
-            }
+            max = 10 - 8 - 2 - 7;
+            print(max,5);
 
-            
-            
-           
             return;
         }       
 }

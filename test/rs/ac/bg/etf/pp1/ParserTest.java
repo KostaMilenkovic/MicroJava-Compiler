@@ -49,6 +49,7 @@ public class ParserTest {
 
                 System.out.println("================================================");
 
+                //dumpCount();
                 
                 impl.dump();
 	        
