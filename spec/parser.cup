@@ -64,7 +64,7 @@ terminal     PROG, STATIC, CONTINUE, LBRACE, RBRACE, COMMA, LPAREN, RPAREN, SEMI
 terminal     IF, ELSE;
 terminal     CLASS, EXTENDS, CONST;
 terminal     INC, DEC, FOR, OR, AND, NEQ, GT, GEQ, LT, LEQ, DOT, NEW, EQ;
-terminal     ASSIGN, ASSIGN_PLUS, ASSIGN_MINUS, ASSIGN_MUL, ASSIGN_DIV, ASSIGN_MOD ;
+terminal     ASSIGN, ASSIGN_PLUS, ASSIGN_MINUS, ASSIGN_MUL, ASSIGN_DIV, ASSIGN_MOD, NEW_OP ;
 terminal     ADD, SUB, MUL, DIV, MOD;
 terminal     Character CHAR;
 terminal     Boolean BOOL;
@@ -328,7 +328,8 @@ AddopRight ::=  ASSIGN_PLUS {: RESULT = new Integer(Code.add); :}
 
 MulopLeft ::=   MUL {: RESULT = new Integer(Code.mul); :}
         |       DIV {: RESULT = new Integer(Code.div); :}
-        |       MOD {: RESULT = new Integer(Code.rem); :} ;
+        |       MOD {: RESULT = new Integer(Code.rem); :}
+        |       NEW_OP {: RESULT = new Integer(1234); :};
 
 MulopRight ::=  ASSIGN_MUL {: RESULT = new Integer(Code.mul); :}
         |       ASSIGN_DIV {: RESULT = new Integer(Code.div); :}

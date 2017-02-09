@@ -78,6 +78,7 @@ return new_symbol(sym.EOF);
 "%=" {return new_symbol(sym.ASSIGN_MOD, yytext());}
 "&&" {return new_symbol(sym.AND, yytext());}
 "||" {return new_symbol(sym.OR, yytext());}
+"#" {return new_symbol(sym.NEW_OP, yytext());}
 
 "//" {yybegin(COMMENT);}
 

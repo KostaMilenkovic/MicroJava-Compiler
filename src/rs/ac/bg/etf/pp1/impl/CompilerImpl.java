@@ -611,7 +611,24 @@ public class CompilerImpl {
             reportError("Operands are not of type int. Line ", line);
             res = Tab.noObj;   
         } else {
-            Code.put(operation.intValue());
+            
+            if(operation.intValue() != 1234){
+                Code.put(operation.intValue());
+            }else{
+                Obj rightOperand = Tab.find("_sys_tmp");
+                Code.store(rightOperand);
+                Code.put(Code.dup);
+                Code.put(Code.dup);
+                Code.put(Code.mul);
+                Code.put(Code.mul);
+                Code.load(rightOperand);
+                Code.load(rightOperand);
+                Code.load(rightOperand);
+                Code.put(Code.mul);
+                Code.put(Code.mul);
+                Code.put(Code.add);
+            }
+            
             
             res = new Obj(term.getKind(),"", termType);
         }
