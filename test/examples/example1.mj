@@ -19,7 +19,7 @@ program test301
 		bodovi--;
 		print(bodovi); 
 			
-		
+
 		niz = new int[2];
 		niz[0] = pet;
 		niz[1] = 10;
@@ -43,9 +43,5 @@ program test301
 		read(bodovi);
 		bodovi = bodovi + 1;
 		print(bodovi);
-			
-	
-	}
+        }
 }
-
-

@@ -28,48 +28,36 @@ public class ParserTest {
 		
 		Logger log = Logger.getLogger(ParserTest.class);
 		impl = new CompilerImpl();
-		
 		Reader br = null;
 		try {
 
-                File sourceCode = null;
+                    File sourceCode = null;
 
-                sourceCode = new File("test/examples/example1.mj");
-                log.info("Compiling source file: " + sourceCode.getAbsolutePath());
+                    sourceCode = new File("test/examples/example1.mj");
+                    System.out.print("BUILDING FROM SOURCE FILE: " + sourceCode.getAbsolutePath());
 
-                br = new BufferedReader(new FileReader(sourceCode));
-                Yylex lexer = new Yylex(br);
+                    br = new BufferedReader(new FileReader(sourceCode));
+                    Yylex lexer = new Yylex(br);
+                    Parser p = new Parser(lexer);
+                    Symbol s = p.parse(); 
+                    String outputFileName = "mydist/program.obj";
+                    File objFile = new File(outputFileName);
+                    if(objFile.exists()) 
+                        objFile.delete();
 
-
-                System.out.println("==============SEMANTICAL ANALYSIS================");
-
-                Parser p = new Parser(lexer);
-                Symbol s = p.parse();  //pocetak parsiranja
-
-
-                System.out.println("================================================");
-
-                //dumpCount();
-                
-                impl.dump();
-	        
+                    if (impl.errorDetected) {
+                        log.error("BUILD FAILURE");
+                        System.err.print("BUILD FAILURE\n");
+                    }
+                    else {
+                        Code.write(new FileOutputStream(new File(outputFileName)));
+                        log.info("BUILD SUCCESSFULL");
+                        System.out.print("BUILD SUCCESSFULL");
+                    }
 		} 
 		finally {
 			if (br != null) try { br.close(); } catch (IOException e1) { log.error(e1.getMessage(), e1); }
 		}
-
 	}
-        
-        private static void dumpCount(){
-            System.out.println("==============SINTATICAL ANALYSIS===============");
-            System.out.println("Number of constants: " + impl.constCnt + "\n");
-            System.out.println("Number of global variables: " + impl.globalVarCnt + "\n");
-            System.out.println("Number of local variables: " + impl.localVarCnt + "\n");	        	        
-            System.out.println("Number of global arrays: " + impl.globalArrayCnt + "\n");
-            System.out.println("Number of local arrays: " + impl.localArrayCnt + "\n");
-            System.out.println("Classes defined: " + impl.classCnt + "\n");
-            System.out.println("==============================================");
-        }
-	
-	
+
 }

@@ -1,8 +1,15 @@
 program myProgram
+int l1;
+int globArr[];
+const int N = 5;
 {
     void main ()
         int max,min;
         int a,b;
+        int v1;
+        int arr[];
+        int v3,v2;
+        char c1;
         {
             a = 5;
             b = 3;
@@ -62,6 +69,14 @@ program myProgram
             print(arr[7],3);
             print(arr[8],3);
             print(arr[9],3);
+            
+            print('z',3);
+            v1 = 10 - 3 - 2;
+            print(v1,3);
+
+            v1 = 1;
+            print(arr[v1*=(3-v1)],10);
+            print(v1,10);
 
             v1 = N + 10;  
             print(v1,3);
@@ -78,16 +93,16 @@ program myProgram
             v1++;
             v1++;
             v1--;
-            v1 = 2 * 8; //16
-            v1 = v1 + 2;  //18
-            v1 = v1 / 2; //9
-            v1 = v1 + 2 + 3; //14
-            v1 = v1 + 2 + v3 - v1; // 5
+            v1 = 2 * 8; 
+            v1 = v1 + 2; 
+            v1 = v1 / 2; 
+            v1 = v1 + 2 + 3; 
+            v1 = v1 + 2 + v3 - v1; 
             print(-v1,3); //-5
-            v1 += 10; //15
+            v1 += 10; 
             print(v1,3); //15
             v2 = 10; 
-            v2--; //9
+            v2--; 
             v2 = v2 + v1;
             print(v2,3); //24
             v2 += 10;   
