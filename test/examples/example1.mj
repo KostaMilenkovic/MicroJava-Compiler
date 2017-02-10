@@ -10,7 +10,6 @@ program test301
 {
 	void main()	int bodovi;
 	{
-                print(bodovi,20);
 		bodovi = 0;
 		bodovi++;
 		bodovi = bodovi + jedan;

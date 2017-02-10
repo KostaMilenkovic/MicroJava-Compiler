@@ -14,7 +14,7 @@ import java.util.Map;
 public class CompilerImpl {	
     public Integer printCallCount = 0;
     private Boolean mainIsDefined = false;
-    public boolean errorDetected = false;
+    public static boolean errorDetected = false;
     
     public Scope globalScope;
     public Obj currentProgram;
@@ -527,7 +527,6 @@ public class CompilerImpl {
     
     public Struct assign(Obj des, Integer op, Struct expr, int line) {
         Struct res = null;
-        boolean errorDetected = false;
         if(des == null || expr == null)return Tab.noType;
         
         Struct desType = isArray(des.getType())?des.getType().getElemType():des.getType();
@@ -535,34 +534,30 @@ public class CompilerImpl {
         
         if(des.getKind() == Obj.Con) {
             reportError("Left part of equation is a constant on line "+line);
-            errorDetected = true;
-            res = Tab.noType;
+            return Tab.noType;
         }
-        else {
-            errorDetected = !desType.assignableTo(exprType);
-            
-            if (errorDetected) {
-                reportError("Types are incompatible on line "+line);
+        if(!desType.assignableTo(exprType)){
+            reportError("Types are incompatible on line "+line);
+            return Tab.noType;
+        }
+           
+        res = des.getType();
+        if(isArray(des.getType()))
+            reportInfo("Array element detected", line);
+
+        if(op.intValue() == 0) {
+            Code.store(des);
+        } else {
+            if(isArray(des.getType())) {
+                insertIntoStackOnAssign(des);
             } else {
-                res = des.getType();
-                if(isArray(des.getType()))
-                    reportInfo("Array element detected", line);
-                
-                if(op.intValue() == 0) {
-                    Code.store(des);
-                } else {
-                    if(isArray(des.getType())) {
-                        insertIntoStackOnAssign(des);
-                    } else {
-                        Obj rightOperand = Tab.find("_sys_tmp");
-                        Code.store(rightOperand);
-                        Code.load(des);
-                        Code.load(rightOperand);
-                    }
-                    Code.put(op.intValue());
-                    Code.store(des);
-                }
+                Obj rightOperand = Tab.find("_sys_tmp");
+                Code.store(rightOperand);
+                Code.load(des);
+                Code.load(rightOperand);
             }
+            Code.put(op.intValue());
+            Code.store(des);
         }
         return res;
     }

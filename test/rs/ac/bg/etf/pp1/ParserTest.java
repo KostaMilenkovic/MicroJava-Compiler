@@ -17,7 +17,6 @@ import rs.etf.pp1.mj.runtime.Code;
 import rs.etf.pp1.symboltable.Tab;
 
 public class ParserTest {
-        private static CompilerImpl impl;
 
 	static {
 		DOMConfigurator.configure(Log4JUtils.instance().findLoggerConfigFile());
@@ -27,7 +26,6 @@ public class ParserTest {
 	public static void main(String[] args) throws Exception {
 		
 		Logger log = Logger.getLogger(ParserTest.class);
-		impl = new CompilerImpl();
 		Reader br = null;
 		try {
 
@@ -44,15 +42,14 @@ public class ParserTest {
                     File objFile = new File(outputFileName);
                     if(objFile.exists()) 
                         objFile.delete();
-
-                    if (impl.errorDetected) {
+                    
+                    if (p.impl.errorDetected) {
                         log.error("BUILD FAILURE");
                         System.err.print("BUILD FAILURE\n");
                     }
                     else {
                         Code.write(new FileOutputStream(new File(outputFileName)));
                         log.info("BUILD SUCCESSFULL");
-                        System.out.print("BUILD SUCCESSFULL");
                     }
 		} 
 		finally {
