@@ -141,6 +141,7 @@ public class CompilerImpl {
             System.out.println(entry.getKey() + " : " + entry.getValue());
         }
         System.out.println("===============");
+        Tab.dump();
     }
     
     public void countElement(Position item) {
